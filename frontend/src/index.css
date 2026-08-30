@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+:root {
+  /* Cor — paleta "caderno escolar ao entardecer" */
+  --bg: #101B2D;          /* capa de caderno / entardecer */
+  --bg-soft: #182740;     /* elevação sobre o bg */
+  --paper: #FBF7EE;       /* página de caderno */
+  --paper-soft: #F2ECDC;  /* linha/zebra sobre o paper */
+  --ink: #16202E;         /* texto sobre paper */
+  --ink-soft: #5B6472;    /* texto secundário sobre paper */
+  --cream: #F3ECDD;       /* texto sobre bg escuro */
+  --cream-soft: #B9BFCC;  /* texto secundário sobre bg escuro */
+  --mango: #E69A28;       /* acção primária — sol / capulana */
+  --mango-ink: #4A2E05;   /* texto sobre mango */
+  --teal: #1F7A6C;        /* pago / ativo */
+  --teal-soft: #E4F2EE;   /* fundo de estado pago */
+  --brick: #B5482F;       /* expirado / rejeitado */
+  --brick-soft: #F7E7E2;  /* fundo de estado expirado/rejeitado */
+  --amber-soft: #FBEED9;  /* fundo de estado pendente */
+
+  font-family: 'Public Sans', system-ui, sans-serif;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--cream);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: 'Fraunces', serif;
+  font-optical-sizing: auto;
+}
+
+.font-mono-ref {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  letter-spacing: 0.04em;
+}
+
+/* Foco visível para acessibilidade de teclado */
+:focus-visible {
+  outline: 2px solid var(--mango);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Recorte perfurado do bilhete (elemento-assinatura) */
+.ticket-notch {
+  position: relative;
+}
+.ticket-notch::before,
+.ticket-notch::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: var(--bg);
+  border-radius: 999px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.ticket-notch::before { left: -9px; }
+.ticket-notch::after { right: -9px; }
+
+.campo {
+  width: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  border: 1px solid transparent;
+}
+.campo::placeholder { color: var(--ink-soft); }
+.campo:focus { border-color: var(--mango); outline: none; }

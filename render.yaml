@@ -1,0 +1,40 @@
+# Blueprint do Render: cria automaticamente o backend (Web Service) e o
+# frontend (Static Site), ambos no plano gratuito, cada um com o seu
+# subdomínio *.onrender.com — sem VPS e sem precisar de domínio próprio.
+#
+# Como usar:
+# 1. Sobe este projeto para um repositório no GitHub.
+# 2. No Render: New -> Blueprint -> escolhe o repositório.
+# 3. O Render lê este ficheiro e propõe criar os dois serviços de uma vez.
+# 4. Quando pedir o valor de DATABASE_URL, cola a connection string do Supabase.
+
+services:
+  - type: web
+    name: sala-virtual-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 4000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+
+  - type: web
+    name: sala-virtual-frontend
+    runtime: static
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://sala-virtual-backend.onrender.com/api
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
