@@ -47,8 +47,8 @@ export default function AdminAlunos() {
       <div className="mt-3 space-y-2">
         {lista === null && !erro && (
           <div className="animate-pulse space-y-2">
-            <div className="h-16 rounded-2xl bg-white/5" />
-            <div className="h-16 rounded-2xl bg-white/5" />
+            <div className="h-16 rounded-2xl bg-black/[0.04]" />
+            <div className="h-16 rounded-2xl bg-black/[0.04]" />
           </div>
         )}
 
@@ -79,12 +79,12 @@ export default function AdminAlunos() {
               </button>
 
               {estaAberto && (
-                <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                <div className="mt-3 space-y-2 border-t border-black/10 pt-3">
                   {(!a.historico || a.historico.length === 0) && (
                     <p className="text-sm text-[var(--cream-soft)]">Ainda não pediu nenhuma unidade.</p>
                   )}
                   {a.historico?.map((acesso) => (
-                    <div key={acesso.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/5 px-3 py-2">
+                    <div key={acesso.id} className="flex items-center justify-between gap-2 rounded-xl bg-black/[0.04] px-3 py-2">
                       <div>
                         <p className="text-sm font-medium text-[var(--cream)]">{acesso.unidade_nome}</p>
                         <p className="font-mono-ref text-xs text-[var(--cream-soft)]">{acesso.codigo_referencia}</p>

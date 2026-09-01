@@ -38,8 +38,8 @@ export default function Home() {
       <div className="space-y-3">
         {classes === null && !erro && (
           <div className="animate-pulse space-y-3">
-            <div className="h-24 rounded-2xl bg-white/5" />
-            <div className="h-24 rounded-2xl bg-white/5" />
+            <div className="h-24 rounded-2xl bg-black/[0.04]" />
+            <div className="h-24 rounded-2xl bg-black/[0.04]" />
           </div>
         )}
 

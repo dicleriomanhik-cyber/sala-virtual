@@ -17,7 +17,7 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-[var(--bg)]/95 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-black/10 bg-[var(--bg)]/95 backdrop-blur">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mango)] font-display text-sm font-bold text-[var(--mango-ink)]">
@@ -34,7 +34,7 @@ export default function AdminLayout({ children }) {
           </div>
           <button
             onClick={sair}
-            className="shrink-0 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-[var(--cream-soft)] transition hover:bg-white/5"
+            className="shrink-0 rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-[var(--cream-soft)] transition hover:bg-black/[0.04]"
           >
             Sair
           </button>
@@ -48,7 +48,7 @@ export default function AdminLayout({ children }) {
                 `shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
                   isActive
                     ? 'bg-[var(--mango)] text-[var(--mango-ink)]'
-                    : 'text-[var(--cream-soft)] hover:bg-white/5'
+                    : 'text-[var(--cream-soft)] hover:bg-black/[0.04]'
                 }`
               }
             >

@@ -76,8 +76,8 @@ export default function UnidadeTemas() {
 
       {!dados && !erro && (
         <div className="animate-pulse space-y-3">
-          <div className="h-6 w-2/3 rounded bg-white/5" />
-          <div className="h-16 rounded-2xl bg-white/5" />
+          <div className="h-6 w-2/3 rounded bg-black/[0.04]" />
+          <div className="h-16 rounded-2xl bg-black/[0.04]" />
         </div>
       )}
 
@@ -125,7 +125,7 @@ export default function UnidadeTemas() {
                   href={t.link_youtube}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-3 rounded-xl bg-[var(--bg-soft)] p-3.5 transition hover:bg-white/5"
+                  className="flex items-center gap-3 rounded-xl bg-[var(--bg-soft)] p-3.5 transition hover:bg-black/[0.04]"
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--mango)]">
                     <svg viewBox="0 0 24 24" className="h-4 w-4 fill-[var(--mango-ink)]">

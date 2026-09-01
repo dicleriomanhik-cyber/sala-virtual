@@ -34,8 +34,8 @@ export default function ClasseUnidades() {
       <div className="mt-5 space-y-3">
         {unidades === null && !erro && (
           <div className="animate-pulse space-y-3">
-            <div className="h-20 rounded-2xl bg-white/5" />
-            <div className="h-20 rounded-2xl bg-white/5" />
+            <div className="h-20 rounded-2xl bg-black/[0.04]" />
+            <div className="h-20 rounded-2xl bg-black/[0.04]" />
           </div>
         )}
 
@@ -47,7 +47,7 @@ export default function ClasseUnidades() {
           <Link
             key={u.id}
             to={`/unidades/${u.id}`}
-            className="block rounded-2xl bg-[var(--bg-soft)] p-4 transition hover:bg-white/5"
+            className="block rounded-2xl bg-[var(--bg-soft)] p-4 transition hover:bg-black/[0.04]"
           >
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-display text-base font-semibold text-[var(--cream)]">{u.nome}</h2>

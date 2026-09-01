@@ -28,7 +28,7 @@ function FormClasse({ inicial, aoSubmeter, aoCancelar }) {
   }
 
   return (
-    <form onSubmit={enviar} className="space-y-3 rounded-xl bg-white/5 p-3">
+    <form onSubmit={enviar} className="space-y-3 rounded-xl bg-black/[0.04] p-3">
       <Campo label="Nome da classe">
         <input required value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: 9ª Classe" className="campo" />
       </Campo>
@@ -70,7 +70,7 @@ function FormUnidade({ inicial, aoSubmeter, aoCancelar }) {
   }
 
   return (
-    <form onSubmit={enviar} className="space-y-3 rounded-xl bg-white/5 p-3">
+    <form onSubmit={enviar} className="space-y-3 rounded-xl bg-black/[0.04] p-3">
       <Campo label="Nome da unidade">
         <input required value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Unidade 1 — Funções" className="campo" />
       </Campo>
@@ -121,7 +121,7 @@ function FormTema({ inicial, aoSubmeter, aoCancelar }) {
   }
 
   return (
-    <form onSubmit={enviar} className="space-y-3 rounded-xl bg-white/5 p-3">
+    <form onSubmit={enviar} className="space-y-3 rounded-xl bg-black/[0.04] p-3">
       <Campo label="Nome do tema">
         <input required value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Introdução a funções" className="campo" />
       </Campo>
@@ -302,8 +302,8 @@ export default function AdminConteudo() {
       <div className="mt-4 space-y-3">
         {classes === null && !erro && (
           <div className="animate-pulse space-y-3">
-            <div className="h-16 rounded-2xl bg-white/5" />
-            <div className="h-16 rounded-2xl bg-white/5" />
+            <div className="h-16 rounded-2xl bg-black/[0.04]" />
+            <div className="h-16 rounded-2xl bg-black/[0.04]" />
           </div>
         )}
 
@@ -325,13 +325,13 @@ export default function AdminConteudo() {
               <div className="flex shrink-0 gap-2">
                 <button
                   onClick={() => setFormAtivo({ nivel: 'classe', id: c.id })}
-                  className="rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-[var(--cream-soft)] hover:bg-white/5"
+                  className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--cream-soft)] hover:bg-black/[0.04]"
                 >
                   Editar
                 </button>
                 <button
                   onClick={() => setApagar({ tipo: 'classe', id: c.id, nome: c.nome })}
-                  className="rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-[var(--brick)] hover:bg-white/5"
+                  className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--brick)] hover:bg-black/[0.04]"
                 >
                   Apagar
                 </button>
@@ -345,7 +345,7 @@ export default function AdminConteudo() {
             )}
 
             {classeAberta === c.id && (
-              <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
+              <div className="mt-4 space-y-3 border-t border-black/10 pt-4">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">Unidades</p>
                   <button
@@ -361,7 +361,7 @@ export default function AdminConteudo() {
                 )}
 
                 {!unidadesPorClasse[c.id] && (
-                  <div className="h-12 animate-pulse rounded-xl bg-white/5" />
+                  <div className="h-12 animate-pulse rounded-xl bg-black/[0.04]" />
                 )}
 
                 {unidadesPorClasse[c.id]?.length === 0 && (
@@ -369,7 +369,7 @@ export default function AdminConteudo() {
                 )}
 
                 {unidadesPorClasse[c.id]?.map((u) => (
-                  <div key={u.id} className="rounded-xl bg-white/5 p-3">
+                  <div key={u.id} className="rounded-xl bg-black/[0.04] p-3">
                     <div className="flex items-center justify-between gap-3">
                       <button onClick={() => alternarUnidade(u.id)} className="flex-1 text-left">
                         <p className="text-sm font-semibold text-[var(--cream)]">
@@ -383,13 +383,13 @@ export default function AdminConteudo() {
                       <div className="flex shrink-0 gap-2">
                         <button
                           onClick={() => setFormAtivo({ nivel: 'unidade', id: u.id, classeId: c.id })}
-                          className="rounded-lg border border-white/15 px-2 py-1 text-xs font-semibold text-[var(--cream-soft)] hover:bg-white/10"
+                          className="rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold text-[var(--cream-soft)] hover:bg-black/5"
                         >
                           Editar
                         </button>
                         <button
                           onClick={() => setApagar({ tipo: 'unidade', id: u.id, classeId: c.id, nome: u.nome })}
-                          className="rounded-lg border border-white/15 px-2 py-1 text-xs font-semibold text-[var(--brick)] hover:bg-white/10"
+                          className="rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold text-[var(--brick)] hover:bg-black/5"
                         >
                           Apagar
                         </button>
@@ -407,7 +407,7 @@ export default function AdminConteudo() {
                     )}
 
                     {unidadeAberta === u.id && (
-                      <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                      <div className="mt-3 space-y-2 border-t border-black/10 pt-3">
                         <div className="flex items-center justify-between">
                           <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--cream-soft)]">Temas</p>
                           <button
@@ -422,7 +422,7 @@ export default function AdminConteudo() {
                           <FormTema aoSubmeter={(dados) => guardarTema(u.id, dados)} aoCancelar={() => setFormAtivo(null)} />
                         )}
 
-                        {!temasPorUnidade[u.id] && <div className="h-10 animate-pulse rounded-lg bg-white/5" />}
+                        {!temasPorUnidade[u.id] && <div className="h-10 animate-pulse rounded-lg bg-black/[0.04]" />}
 
                         {temasPorUnidade[u.id]?.length === 0 && (
                           <p className="text-sm text-[var(--cream-soft)]">Sem temas nesta unidade ainda.</p>
@@ -440,13 +440,13 @@ export default function AdminConteudo() {
                               <div className="flex shrink-0 gap-2">
                                 <button
                                   onClick={() => setFormAtivo({ nivel: 'tema', id: t.id, unidadeId: u.id })}
-                                  className="rounded-lg border border-white/15 px-2 py-1 text-xs font-semibold text-[var(--cream-soft)] hover:bg-white/10"
+                                  className="rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold text-[var(--cream-soft)] hover:bg-black/5"
                                 >
                                   Editar
                                 </button>
                                 <button
                                   onClick={() => setApagar({ tipo: 'tema', id: t.id, unidadeId: u.id, nome: t.nome })}
-                                  className="rounded-lg border border-white/15 px-2 py-1 text-xs font-semibold text-[var(--brick)] hover:bg-white/10"
+                                  className="rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold text-[var(--brick)] hover:bg-black/5"
                                 >
                                   Apagar
                                 </button>
