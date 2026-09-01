@@ -8,6 +8,7 @@ const ABAS = [
   { to: '/admin/conteudo', label: 'Conteúdo' },
   { to: '/admin/alunos', label: 'Alunos' },
   { to: '/admin/configuracoes', label: 'Configurações' },
+  { to: '/admin/conta', label: 'Conta' },
 ];
 
 export default function AdminLayout({ children }) {

@@ -25,6 +25,38 @@ router.post('/login', async (req, res) => {
 // A partir daqui, todas as rotas exigem admin autenticado
 router.use(autenticarAdmin);
 
+// PUT /api/admin/me — trocar username e/ou password do admin autenticado
+router.put('/me', async (req, res) => {
+  const { passwordAtual, novoUsername, novaPassword } = req.body || {};
+  if (!passwordAtual) {
+    return res.status(400).json({ erro: 'A password atual é obrigatória' });
+  }
+
+  const admin = await db.get('SELECT * FROM admins WHERE id = ?', [req.admin.id]);
+  if (!admin || !compararValor(passwordAtual, admin.password_hash)) {
+    return res.status(401).json({ erro: 'Password atual incorreta' });
+  }
+
+  if (novaPassword && novaPassword.length < 4) {
+    return res.status(400).json({ erro: 'A nova password deve ter pelo menos 4 caracteres' });
+  }
+
+  const usernameFinal = novoUsername && novoUsername.trim() ? novoUsername.trim() : admin.username;
+
+  if (usernameFinal !== admin.username) {
+    const existente = await db.get('SELECT id FROM admins WHERE username = ? AND id != ?', [usernameFinal, admin.id]);
+    if (existente) {
+      return res.status(409).json({ erro: 'Já existe um admin com esse username' });
+    }
+  }
+
+  const hashFinal = novaPassword ? hashValor(novaPassword) : admin.password_hash;
+
+  await db.run('UPDATE admins SET username = ?, password_hash = ? WHERE id = ?', [usernameFinal, hashFinal, admin.id]);
+
+  res.json({ ok: true, admin: { id: admin.id, username: usernameFinal } });
+});
+
 // ---------- Classes (CRUD) ----------
 
 router.get('/classes', async (req, res) => {

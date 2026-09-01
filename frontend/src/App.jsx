@@ -14,6 +14,7 @@ import AdminPedidos from './pages/admin/AdminPedidos';
 import AdminConteudo from './pages/admin/AdminConteudo';
 import AdminAlunos from './pages/admin/AdminAlunos';
 import AdminConfiguracoes from './pages/admin/AdminConfiguracoes';
+import AdminConta from './pages/admin/AdminConta';
 import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute';
 
 export default function App() {
@@ -61,6 +62,14 @@ export default function App() {
                 element={
                   <ProtectedAdminRoute>
                     <AdminConfiguracoes />
+                  </ProtectedAdminRoute>
+                }
+              />
+              <Route
+                path="/admin/conta"
+                element={
+                  <ProtectedAdminRoute>
+                    <AdminConta />
                   </ProtectedAdminRoute>
                 }
               />

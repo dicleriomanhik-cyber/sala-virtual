@@ -32,7 +32,7 @@ export function AdminAuthProvider({ children }) {
   };
 
   return (
-    <AdminAuthContext.Provider value={{ admin, entrar, sair }}>
+    <AdminAuthContext.Provider value={{ admin, setAdmin, entrar, sair }}>
       {children}
     </AdminAuthContext.Provider>
   );
