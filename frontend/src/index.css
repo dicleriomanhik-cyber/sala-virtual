@@ -2,8 +2,8 @@
 
 :root {
   /* Cor — paleta "caderno escolar" em azul claro */
-  --bg: #EAF1FE;          /* fundo claro azulado */
-  --bg-soft: #DCE9FD;     /* elevação sobre o bg */
+  --bg: #F3F4F6;          /* fundo neutro suave, quase sem saturação */
+  --bg-soft: #E9EBEF;     /* elevação sobre o bg */
   --paper: #FFFFFF;       /* página de caderno */
   --paper-soft: #F4F8FE;  /* linha/zebra sobre o paper */
   --ink: #16202E;         /* texto sobre paper */
