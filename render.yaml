@@ -1,10 +1,16 @@
 # Blueprint do Render: cria automaticamente o backend (Web Service) e o
 # frontend (Static Site), ambos no plano gratuito, cada um com o seu
 # subdominio *.onrender.com - sem VPS e sem precisar de dominio proprio.
+#
+# NOTA: os nomes de servico abaixo (sala-virtual-queha-api / sala-virtual-queha)
+# tem de corresponder aos nomes ATUAIS mostrados no painel do Render, senao o
+# Render cria servicos duplicados em vez de atualizar os existentes.
+# O link publico real do backend continua a ser sala-virtual-backend.onrender.com
+# (o Render nao muda o link ao renomear, so o nome mostrado no painel).
 
 services:
   - type: web
-    name: sala-virtual-api
+    name: sala-virtual-queha-api
     runtime: node
     plan: free
     rootDir: backend
@@ -19,14 +25,14 @@ services:
         sync: false
 
   - type: web
-    name: sala-virtual
+    name: sala-virtual-queha
     runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://sala-virtual-api.onrender.com/api
+        value: https://sala-virtual-backend.onrender.com/api
     routes:
       - type: rewrite
         source: /*
