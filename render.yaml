@@ -4,7 +4,7 @@
 
 services:
   - type: web
-    name: sala-virtual-backend
+    name: sala-virtual-api
     runtime: node
     plan: free
     rootDir: backend
@@ -19,14 +19,14 @@ services:
         sync: false
 
   - type: web
-    name: sala-virtual-frontend
+    name: sala-virtual
     runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://sala-virtual-backend.onrender.com/api
+        value: https://sala-virtual-api.onrender.com/api
     routes:
       - type: rewrite
         source: /*
