@@ -1,4 +1,4 @@
-# Sala Virtual — Frontend (Parte 2: Aluno + Parte 3: Admin)
+# Segredos da Físuca — Frontend (Parte 2: Aluno + Parte 3: Admin)
 
 React + Vite + Tailwind CSS (v4) + React Router. Cobre todo o fluxo do aluno descrito na
 spec: landing pública, registo/login, navegação por classe → unidade → temas, pedido de
