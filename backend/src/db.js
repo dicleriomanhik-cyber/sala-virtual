@@ -106,7 +106,7 @@ async function migrate() {
 
     CREATE TABLE IF NOT EXISTS configuracao (
       id INTEGER PRIMARY KEY CHECK (id = 1),
-      nome_escola TEXT NOT NULL DEFAULT 'Sala Virtual',
+      nome_escola TEXT NOT NULL DEFAULT 'Segredos da Física',
       logo_url TEXT,
       whatsapp_admin TEXT,
       duracao_acesso_dias INTEGER NOT NULL DEFAULT 30
@@ -124,7 +124,7 @@ async function migrate() {
   if (!cfg) {
     await run(
       `INSERT INTO configuracao (id, nome_escola, logo_url, whatsapp_admin, duracao_acesso_dias)
-       VALUES (1, 'Sala Virtual', NULL, NULL, 30)`
+       VALUES (1, 'Segredos da Física', NULL, NULL, 30)`
     );
   }
 }
