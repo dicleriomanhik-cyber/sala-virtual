@@ -10,7 +10,7 @@ export default function Header({ config, direita }) {
           </div>
         )}
         <span className="font-display text-base font-semibold text-[var(--cream)]">
-          {config?.nome_escola || 'Sala Virtual'}
+          {config?.nome_escola || 'Segredos da Física'}
         </span>
       </div>
       {direita}
