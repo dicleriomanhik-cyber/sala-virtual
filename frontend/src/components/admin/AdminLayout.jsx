@@ -21,11 +21,11 @@ export default function AdminLayout({ children }) {
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mango)] font-display text-sm font-bold text-[var(--mango-ink)]">
-              SV
+              FIS
             </div>
             <div>
               <p className="font-display text-base font-semibold leading-tight text-[var(--cream)]">
-                {config?.nome_escola || 'Sala Virtual'}
+                {config?.nome_escola || 'Segredos da Física'}
               </p>
               <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--mango)]">
                 Painel Admin
