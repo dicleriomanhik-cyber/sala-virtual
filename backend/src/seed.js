@@ -97,7 +97,7 @@ async function seed() {
 
   await db.run(
     'UPDATE configuracao SET nome_escola = ?, whatsapp_admin = ?, duracao_acesso_dias = ? WHERE id = 1',
-    ['Sala Virtual — Prof. Bento Jeremias Queha', '258840000000', 30]
+    ['Segredos da Física — Prof. Bento Jeremias Queha', '258840000000', 30]
   );
 
   // Admin de exemplo (username: admin / password: admin123) — trocar em produção!
