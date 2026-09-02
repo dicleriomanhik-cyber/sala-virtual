@@ -38,7 +38,7 @@ export default function AdminLogin() {
             SV
           </div>
           <h1 className="font-display text-2xl font-semibold text-[var(--cream)]">Painel Admin</h1>
-          <p className="text-sm text-[var(--cream-soft)]">Sala Virtual — acesso reservado ao professor</p>
+          <p className="text-sm text-[var(--cream-soft)]">Segredos da Física — acesso reservado ao professor</p>
         </div>
 
         <form onSubmit={aoSubmeter} className="space-y-4">

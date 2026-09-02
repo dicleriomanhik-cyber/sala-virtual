@@ -1,4 +1,4 @@
-# Publicar a Sala Virtual de graça (sem VPS, sem domínio)
+# Publicar a Segredos da Física de graça (sem VPS, sem domínio)
 
 Stack final, tudo gratuito:
 
@@ -19,7 +19,7 @@ Se ainda não estiver num repositório:
 ```bash
 git init
 git add .
-git commit -m "Sala Virtual - Postgres + deploy gratuito"
+git commit -m "Segredos da Física - Postgres + deploy gratuito"
 git branch -M main
 git remote add origin https://github.com/teu-user/sala-virtual.git
 git push -u origin main
