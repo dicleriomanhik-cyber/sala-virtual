@@ -6,9 +6,9 @@ export default function Header({ config, direita }) {
           <img src={config.logo_url} alt="" className="h-8 w-8 rounded-full object-cover" />
         ) : (
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mango)] font-display text-sm font-bold text-[var(--mango-ink)]">
-            SV
+            
           </div>
-        )}
+        )}FIS
         <span className="font-display text-base font-semibold text-[var(--cream)]">
           {config?.nome_escola || 'Segredos da Física'}
         </span>
