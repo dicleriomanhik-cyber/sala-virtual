@@ -119,9 +119,6 @@ async function migrate() {
     );
   `);
 
-  // Migração incremental: adiciona a coluna do PDF da unidade se ainda não existir
-  await pool.query(`ALTER TABLE unidades ADD COLUMN IF NOT EXISTS pdf_url TEXT;`);
-
   // Garante que existe sempre uma linha de configuração (id fixo = 1)
   const cfg = await get('SELECT id FROM configuracao WHERE id = 1');
   if (!cfg) {

@@ -86,7 +86,7 @@ export default function AdminAlunos() {
                 >
                   <div>
                     <p className="font-display text-base font-semibold text-[var(--cream)]">{a.nome}</p>
-                    <p className="text-xs text-[var(--cream-soft)]">{a.whatsapp}</p>
+                    <p className="font-mono-ref text-xs text-[var(--cream-soft)]">{a.whatsapp}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-[var(--cream-soft)]">Desde {formatarData(a.data_registo)}</p>

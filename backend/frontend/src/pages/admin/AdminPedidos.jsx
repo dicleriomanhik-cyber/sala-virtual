@@ -24,8 +24,6 @@ export default function AdminPedidos() {
   const [erro, setErro] = useState('');
   const [aProcessar, setAProcessar] = useState(null);
   const [rejeitarId, setRejeitarId] = useState(null);
-  const [apagarId, setApagarId] = useState(null);
-  const [aApagar, setAApagar] = useState(false);
 
   const carregar = useCallback(() => {
     setLista(null);
@@ -64,20 +62,6 @@ export default function AdminPedidos() {
       setErro(e.message);
     } finally {
       setAProcessar(null);
-    }
-  }
-
-  async function apagar(id) {
-    setAApagar(true);
-    setErro('');
-    try {
-      await apiAdmin.del(`/admin/acessos/${id}`);
-      setApagarId(null);
-      carregar();
-    } catch (e) {
-      setErro(e.message);
-    } finally {
-      setAApagar(false);
     }
   }
 
@@ -129,7 +113,7 @@ export default function AdminPedidos() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-display text-base font-semibold text-[var(--cream)]">{p.aluno_nome}</p>
-                <p className="text-xs text-[var(--cream-soft)]">{p.aluno_whatsapp}</p>
+                <p className="font-mono-ref text-xs text-[var(--cream-soft)]">{p.aluno_whatsapp}</p>
               </div>
               <StatusBadge estado={estado} />
             </div>
@@ -176,15 +160,6 @@ export default function AdminPedidos() {
                 </button>
               </div>
             )}
-
-            <div className="mt-2 flex justify-end">
-              <button
-                onClick={() => setApagarId(p.id)}
-                className="rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--brick)] hover:bg-black/[0.04]"
-              >
-                Apagar pedido
-              </button>
-            </div>
           </div>
           );
         })}
@@ -200,19 +175,6 @@ export default function AdminPedidos() {
           perigo
         >
           Tem a certeza de que quer rejeitar este pedido? O aluno poderá submeter um novo pedido depois.
-        </Modal>
-      )}
-
-      {apagarId !== null && (
-        <Modal
-          titulo="Apagar pedido"
-          aoFechar={() => setApagarId(null)}
-          aoConfirmar={() => apagar(apagarId)}
-          textoConfirmar="Apagar"
-          aConfirmar={aApagar}
-          perigo
-        >
-          Tem a certeza de que quer apagar este pedido? O histórico deste pedido será removido permanentemente e não pode ser desfeito.
         </Modal>
       )}
     </AdminLayout>

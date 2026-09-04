@@ -53,7 +53,6 @@ function FormUnidade({ inicial, aoSubmeter, aoCancelar }) {
   const [preco, setPreco] = useState(inicial?.preco ?? '');
   const [ordem, setOrdem] = useState(inicial?.ordem ?? '');
   const [ativo, setAtivo] = useState(inicial?.ativo ?? true);
-  const [pdfUrl, setPdfUrl] = useState(inicial?.pdf_url || '');
   const [aEnviar, setAEnviar] = useState(false);
   const [erro, setErro] = useState('');
 
@@ -62,7 +61,7 @@ function FormUnidade({ inicial, aoSubmeter, aoCancelar }) {
     setErro('');
     setAEnviar(true);
     try {
-      await aoSubmeter({ nome, preco: Number(preco), ordem: Number(ordem) || 0, ativo, pdf_url: pdfUrl || null });
+      await aoSubmeter({ nome, preco: Number(preco), ordem: Number(ordem) || 0, ativo });
     } catch (e) {
       setErro(e.message);
     } finally {
@@ -83,9 +82,6 @@ function FormUnidade({ inicial, aoSubmeter, aoCancelar }) {
           <input type="number" min="0" value={ordem} onChange={(e) => setOrdem(e.target.value)} placeholder="0" className="campo" />
         </Campo>
       </div>
-      <Campo label="PDF da unidade (link, opcional — só fica visível ao aluno após o pagamento)">
-        <input value={pdfUrl} onChange={(e) => setPdfUrl(e.target.value)} placeholder="https://…/documento.pdf" className="campo" />
-      </Campo>
       <label className="flex items-center gap-2 text-sm text-[var(--cream)]">
         <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} className="h-4 w-4 accent-[var(--mango)]" />
         Unidade ativa (visível para os alunos)
@@ -237,14 +233,6 @@ export default function AdminConteudo() {
     setUnidadesPorClasse((prev) => ({ ...prev, [classeId]: prev[classeId].filter((u) => u.id !== id) }));
   }
 
-  async function apagarPdfConfirmado(classeId, id) {
-    const atualizado = await apiAdmin.put(`/admin/unidades/${id}`, { pdf_url: null });
-    setUnidadesPorClasse((prev) => ({
-      ...prev,
-      [classeId]: prev[classeId].map((u) => (u.id === id ? atualizado : u)),
-    }));
-  }
-
   // ----- Tema -----
   async function guardarTema(unidadeId, dados, id) {
     if (id) {
@@ -273,7 +261,6 @@ export default function AdminConteudo() {
       if (tipo === 'classe') await apagarClasseConfirmado(id);
       if (tipo === 'unidade') await apagarUnidadeConfirmado(classeId, id);
       if (tipo === 'tema') await apagarTemaConfirmado(unidadeId, id);
-      if (tipo === 'pdf') await apagarPdfConfirmado(classeId, id);
       setApagar(null);
     } catch (e) {
       setErro(e.message);
@@ -419,25 +406,6 @@ export default function AdminConteudo() {
                       </div>
                     )}
 
-                    {u.pdf_url && (
-                      <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-black/10 px-3 py-2">
-                        <a
-                          href={u.pdf_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="truncate text-xs font-semibold text-[var(--mango)]"
-                        >
-                          📄 Ver PDF anexado
-                        </a>
-                        <button
-                          onClick={() => setApagar({ tipo: 'pdf', id: u.id, classeId: c.id, nome: `PDF de "${u.nome}"` })}
-                          className="shrink-0 rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold text-[var(--brick)] hover:bg-black/5"
-                        >
-                          Apagar PDF
-                        </button>
-                      </div>
-                    )}
-
                     {unidadeAberta === u.id && (
                       <div className="mt-3 space-y-2 border-t border-black/10 pt-3">
                         <div className="flex items-center justify-between">
@@ -507,7 +475,7 @@ export default function AdminConteudo() {
 
       {apagar && (
         <Modal
-          titulo={`Apagar ${apagar.tipo === 'classe' ? 'classe' : apagar.tipo === 'unidade' ? 'unidade' : apagar.tipo === 'tema' ? 'tema' : 'PDF'}`}
+          titulo={`Apagar ${apagar.tipo === 'classe' ? 'classe' : apagar.tipo === 'unidade' ? 'unidade' : 'tema'}`}
           aoFechar={() => setApagar(null)}
           aoConfirmar={confirmarApagar}
           textoConfirmar="Apagar"
@@ -517,7 +485,6 @@ export default function AdminConteudo() {
           Tem a certeza de que quer apagar "{apagar.nome}"?
           {apagar.tipo === 'classe' && ' Isto pode afetar as unidades e temas associados.'}
           {apagar.tipo === 'unidade' && ' Isto pode afetar os temas e acessos associados.'}
-          {apagar.tipo === 'pdf' && ' O aluno deixará de conseguir baixá-lo.'}
           {' '}Esta ação não pode ser desfeita.
         </Modal>
       )}

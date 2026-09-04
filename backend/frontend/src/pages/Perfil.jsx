@@ -18,7 +18,7 @@ export default function Perfil() {
         <p className="mt-0.5 text-base font-medium text-[var(--cream)]">{aluno.nome}</p>
 
         <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">WhatsApp</p>
-        <p className="mt-0.5 text-base font-medium text-[var(--cream)]">{aluno.whatsapp}</p>
+        <p className="mt-0.5 font-mono-ref text-base font-medium text-[var(--cream)]">{aluno.whatsapp}</p>
       </div>
 
       <div className="mt-6">
