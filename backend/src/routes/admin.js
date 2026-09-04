@@ -76,7 +76,9 @@ router.put('/classes/:id', async (req, res) => {
   if (!existente) return res.status(404).json({ erro: 'Classe não encontrada' });
   await db.run('UPDATE classes SET nome = ?, video_gratuito_url = ? WHERE id = ?', [
     nome ?? existente.nome,
-    video_gratuito_url ?? existente.video_gratuito_url,
+    // Usa "!== undefined" (em vez de "??") para que enviar null/"" limpe mesmo o link —
+    // com "??", null era tratado como "não enviado" e o link antigo nunca era apagado.
+    video_gratuito_url !== undefined ? video_gratuito_url : existente.video_gratuito_url,
     req.params.id,
   ]);
   res.json(await db.get('SELECT * FROM classes WHERE id = ?', [req.params.id]));
@@ -167,7 +169,7 @@ router.put('/temas/:id', async (req, res) => {
     unidade_id ?? existente.unidade_id,
     nome ?? existente.nome,
     ordem ?? existente.ordem,
-    link_youtube ?? existente.link_youtube,
+    link_youtube !== undefined ? link_youtube : existente.link_youtube,
     ativo === undefined ? existente.ativo : (ativo ? 1 : 0),
     req.params.id,
   ]);
@@ -262,6 +264,14 @@ router.get('/alunos', async (req, res) => {
     })
   );
   res.json(resultado);
+});
+
+// DELETE /api/admin/alunos/:id — remove o aluno e (por ON DELETE CASCADE) os seus acessos/pedidos
+router.delete('/alunos/:id', async (req, res) => {
+  const existente = await db.get('SELECT id FROM alunos WHERE id = ?', [req.params.id]);
+  if (!existente) return res.status(404).json({ erro: 'Aluno não encontrado' });
+  await db.run('DELETE FROM alunos WHERE id = ?', [req.params.id]);
+  res.status(204).end();
 });
 
 // ---------- Configurações ----------
