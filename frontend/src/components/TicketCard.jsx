@@ -9,13 +9,13 @@ export default function TicketCard({ acesso, acaoWhatsapp }) {
   const { unidade_nome, classe_nome, codigo_referencia, estado, data_expiracao, unidade_preco } = acesso;
 
   return (
-    <div className="flex overflow-hidden rounded-2xl shadow-lg shadow-black/20">
+    <div className="flex w-full overflow-hidden rounded-2xl shadow-lg shadow-black/20">
       {/* Corpo principal do bilhete */}
-      <div className="flex-1 bg-[var(--paper)] p-4">
+      <div className="min-w-0 flex-1 bg-[var(--paper)] p-4">
         <div className="flex items-start justify-between gap-2">
-          <div>
+          <div className="min-w-0">
             {classe_nome && <p className="text-xs font-medium text-[var(--ink-soft)]">{classe_nome}</p>}
-            <h3 className="font-display text-lg font-semibold leading-snug text-[var(--ink)]">{unidade_nome}</h3>
+            <h3 className="break-words font-display text-lg font-semibold leading-snug text-[var(--ink)]">{unidade_nome}</h3>
           </div>
           <StatusBadge estado={estado} />
         </div>

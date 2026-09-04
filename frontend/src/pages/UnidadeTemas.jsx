@@ -13,7 +13,8 @@ export default function UnidadeTemas() {
   const [dados, setDados] = useState(null);
   const [meuAcesso, setMeuAcesso] = useState(undefined); // undefined = ainda a carregar, null = nunca pedido
   const [erro, setErro] = useState('');
-  const [aPedir, setAPedir] = useState(false);
+  const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false); // "Pedir acesso" clicado, ainda não pagou
+  const [aProcessar, setAProcessar] = useState(false);
   const { aluno } = useAuth();
   const config = useConfig();
   const navigate = useNavigate();
@@ -41,19 +42,34 @@ export default function UnidadeTemas() {
     carregar();
   }, [carregar]);
 
-  async function pedirAcesso() {
-    setAPedir(true);
+  // Passo 1: só mostra a confirmação localmente. Não contacta o backend
+  // e, portanto, nenhum pedido chega ainda ao painel do admin.
+  function pedirAcesso() {
+    setErro('');
+    setMostrarConfirmacao(true);
+  }
+
+  // Passo 2: só aqui o pedido é de facto criado no backend (fica visível
+  // para o admin) e o WhatsApp é aberto, no mesmo clique em "Pagar".
+  async function confirmarPagamento() {
+    setAProcessar(true);
     setErro('');
     try {
-      await api.post('/alunos/me/acessos', { unidade_id: Number(unidadeId) });
+      const resposta = await api.post('/alunos/me/acessos', { unidade_id: Number(unidadeId) });
+      if (resposta.link_whatsapp) {
+        window.open(resposta.link_whatsapp, '_blank', 'noopener');
+      }
+      setMostrarConfirmacao(false);
       carregar();
     } catch (e) {
       setErro(e.message);
     } finally {
-      setAPedir(false);
+      setAProcessar(false);
     }
   }
 
+  // Reabrir o WhatsApp a partir do bilhete, para um pedido que já existe
+  // (ex.: o aluno fechou a conversa sem enviar e quer tentar de novo).
   function abrirWhatsapp() {
     const link = linkWhatsapp({
       whatsappAdmin: config?.whatsapp_admin,
@@ -88,7 +104,7 @@ export default function UnidadeTemas() {
             {dados.temas.length} tema{dados.temas.length === 1 ? '' : 's'} · {dados.unidade.preco} MT
           </p>
 
-          {/* Bilhete de acesso: aparece quando há um pedido em curso, expirado ou rejeitado */}
+          {/* Bilhete de acesso: aparece quando já há um pedido em curso, expirado ou rejeitado */}
           {meuAcesso && (
             <div className="mt-5">
               <TicketCard acesso={meuAcesso} acaoWhatsapp={abrirWhatsapp} />
@@ -157,17 +173,36 @@ export default function UnidadeTemas() {
             </div>
           )}
 
-          {podePedir && (
+          {podePedir && !mostrarConfirmacao && (
             <div className="mt-6">
               {!aluno ? (
                 <Botao onClick={() => navigate('/entrar', { state: { depoisDe: `/unidades/${unidadeId}` } })}>
                   Entrar para pedir acesso
                 </Botao>
               ) : (
-                <Botao onClick={pedirAcesso} disabled={aPedir}>
-                  {aPedir ? 'A criar pedido…' : `Pedir acesso — ${dados.unidade.preco} MT`}
-                </Botao>
+                <Botao onClick={pedirAcesso}>Pedir acesso — {dados.unidade.preco} MT</Botao>
               )}
+            </div>
+          )}
+
+          {/* Confirmação: nada foi enviado ao admin ainda. Só ao clicar em
+              "Pagar" é que o pedido é criado e passa a aparecer no painel. */}
+          {podePedir && mostrarConfirmacao && (
+            <div className="mt-6 space-y-3 rounded-2xl bg-[var(--bg-soft)] p-4">
+              <p className="text-sm text-[var(--cream)]">
+                Vai pagar <strong>{dados.unidade.preco} MT</strong> por "{dados.unidade.nome}". Ao clicar em
+                "Pagar", o WhatsApp abre com uma mensagem pronta para enviar ao professor com o código do seu pedido.
+              </p>
+              <Botao onClick={confirmarPagamento} disabled={aProcessar}>
+                {aProcessar ? 'A preparar…' : `Pagar — ${dados.unidade.preco} MT`}
+              </Botao>
+              <button
+                onClick={() => setMostrarConfirmacao(false)}
+                disabled={aProcessar}
+                className="w-full text-center text-sm font-medium text-[var(--cream-soft)]"
+              >
+                Cancelar
+              </button>
             </div>
           )}
         </>
