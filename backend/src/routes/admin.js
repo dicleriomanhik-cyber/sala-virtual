@@ -76,7 +76,9 @@ router.put('/classes/:id', async (req, res) => {
   if (!existente) return res.status(404).json({ erro: 'Classe não encontrada' });
   await db.run('UPDATE classes SET nome = ?, video_gratuito_url = ? WHERE id = ?', [
     nome ?? existente.nome,
-    video_gratuito_url ?? existente.video_gratuito_url,
+    // Usa "!== undefined" (em vez de "??") para que enviar null/"" limpe mesmo o link —
+    // com "??", null era tratado como "não enviado" e o link antigo nunca era apagado.
+    video_gratuito_url !== undefined ? video_gratuito_url : existente.video_gratuito_url,
     req.params.id,
   ]);
   res.json(await db.get('SELECT * FROM classes WHERE id = ?', [req.params.id]));
@@ -98,11 +100,11 @@ router.get('/unidades', async (req, res) => {
 });
 
 router.post('/unidades', async (req, res) => {
-  const { classe_id, nome, ordem, preco, ativo } = req.body || {};
+  const { classe_id, nome, ordem, preco, ativo, pdf_url } = req.body || {};
   if (!classe_id || !nome) return res.status(400).json({ erro: 'classe_id e nome são obrigatórios' });
   const info = await db.run(
-    'INSERT INTO unidades (classe_id, nome, ordem, preco, ativo) VALUES (?, ?, ?, ?, ?) RETURNING id',
-    [classe_id, nome, ordem ?? 0, preco ?? 0, ativo === false ? 0 : 1]
+    'INSERT INTO unidades (classe_id, nome, ordem, preco, ativo, pdf_url) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
+    [classe_id, nome, ordem ?? 0, preco ?? 0, ativo === false ? 0 : 1, pdf_url || null]
   );
   res.status(201).json(await db.get('SELECT * FROM unidades WHERE id = ?', [info.id]));
 });
@@ -110,13 +112,15 @@ router.post('/unidades', async (req, res) => {
 router.put('/unidades/:id', async (req, res) => {
   const existente = await db.get('SELECT * FROM unidades WHERE id = ?', [req.params.id]);
   if (!existente) return res.status(404).json({ erro: 'Unidade não encontrada' });
-  const { nome, ordem, preco, ativo, classe_id } = req.body || {};
-  await db.run('UPDATE unidades SET classe_id = ?, nome = ?, ordem = ?, preco = ?, ativo = ? WHERE id = ?', [
+  const { nome, ordem, preco, ativo, classe_id, pdf_url } = req.body || {};
+  await db.run('UPDATE unidades SET classe_id = ?, nome = ?, ordem = ?, preco = ?, ativo = ?, pdf_url = ? WHERE id = ?', [
     classe_id ?? existente.classe_id,
     nome ?? existente.nome,
     ordem ?? existente.ordem,
     preco ?? existente.preco,
     ativo === undefined ? existente.ativo : (ativo ? 1 : 0),
+    // "!== undefined" (não "??") para que apagar o PDF (enviar null) seja mesmo gravado
+    pdf_url !== undefined ? pdf_url : existente.pdf_url,
     req.params.id,
   ]);
   res.json(await db.get('SELECT * FROM unidades WHERE id = ?', [req.params.id]));
@@ -167,7 +171,7 @@ router.put('/temas/:id', async (req, res) => {
     unidade_id ?? existente.unidade_id,
     nome ?? existente.nome,
     ordem ?? existente.ordem,
-    link_youtube ?? existente.link_youtube,
+    link_youtube !== undefined ? link_youtube : existente.link_youtube,
     ativo === undefined ? existente.ativo : (ativo ? 1 : 0),
     req.params.id,
   ]);
@@ -244,6 +248,14 @@ router.post('/acessos/:id/rejeitar', async (req, res) => {
   res.json(await db.get('SELECT * FROM acessos WHERE id = ?', [req.params.id]));
 });
 
+// DELETE /api/admin/acessos/:id — apaga permanentemente um pedido de acesso
+router.delete('/acessos/:id', async (req, res) => {
+  const existente = await db.get('SELECT id FROM acessos WHERE id = ?', [req.params.id]);
+  if (!existente) return res.status(404).json({ erro: 'Pedido não encontrado' });
+  await db.run('DELETE FROM acessos WHERE id = ?', [req.params.id]);
+  res.status(204).end();
+});
+
 // ---------- Alunos (lista + histórico) ----------
 
 router.get('/alunos', async (req, res) => {
@@ -262,6 +274,14 @@ router.get('/alunos', async (req, res) => {
     })
   );
   res.json(resultado);
+});
+
+// DELETE /api/admin/alunos/:id — remove o aluno e (por ON DELETE CASCADE) os seus acessos/pedidos
+router.delete('/alunos/:id', async (req, res) => {
+  const existente = await db.get('SELECT id FROM alunos WHERE id = ?', [req.params.id]);
+  if (!existente) return res.status(404).json({ erro: 'Aluno não encontrado' });
+  await db.run('DELETE FROM alunos WHERE id = ?', [req.params.id]);
+  res.status(204).end();
 });
 
 // ---------- Configurações ----------

@@ -3,6 +3,7 @@ import { apiAdmin } from '../../api/client';
 import AdminLayout from '../../components/admin/AdminLayout';
 import StatusBadge from '../../components/StatusBadge';
 import MensagemErro from '../../components/MensagemErro';
+import Modal from '../../components/admin/Modal';
 
 function formatarData(iso) {
   if (!iso) return '—';
@@ -14,6 +15,8 @@ export default function AdminAlunos() {
   const [erro, setErro] = useState('');
   const [aberto, setAberto] = useState(null);
   const [busca, setBusca] = useState('');
+  const [apagar, setApagar] = useState(null); // { id, nome }
+  const [aApagar, setAApagar] = useState(false);
 
   useEffect(() => {
     apiAdmin
@@ -21,6 +24,20 @@ export default function AdminAlunos() {
       .then(setLista)
       .catch((e) => setErro(e.message));
   }, []);
+
+  async function confirmarApagar() {
+    setAApagar(true);
+    setErro('');
+    try {
+      await apiAdmin.del(`/admin/alunos/${apagar.id}`);
+      setLista((ls) => ls.filter((a) => a.id !== apagar.id));
+      setApagar(null);
+    } catch (e) {
+      setErro(e.message);
+    } finally {
+      setAApagar(false);
+    }
+  }
 
   const filtrados = lista?.filter((a) => {
     const alvo = busca.trim().toLowerCase();
@@ -62,21 +79,29 @@ export default function AdminAlunos() {
           const estaAberto = aberto === a.id;
           return (
             <div key={a.id} className="rounded-2xl bg-[var(--bg-soft)] p-4">
-              <button
-                onClick={() => setAberto(estaAberto ? null : a.id)}
-                className="flex w-full items-center justify-between gap-3 text-left"
-              >
-                <div>
-                  <p className="font-display text-base font-semibold text-[var(--cream)]">{a.nome}</p>
-                  <p className="font-mono-ref text-xs text-[var(--cream-soft)]">{a.whatsapp}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-[var(--cream-soft)]">Desde {formatarData(a.data_registo)}</p>
-                  <p className="text-xs font-semibold text-[var(--mango)]">
-                    {estaAberto ? 'Fechar ▲' : `${a.historico?.length || 0} pedido(s) ▾`}
-                  </p>
-                </div>
-              </button>
+              <div className="flex items-start justify-between gap-3">
+                <button
+                  onClick={() => setAberto(estaAberto ? null : a.id)}
+                  className="flex flex-1 items-center justify-between gap-3 text-left"
+                >
+                  <div>
+                    <p className="font-display text-base font-semibold text-[var(--cream)]">{a.nome}</p>
+                    <p className="text-xs text-[var(--cream-soft)]">{a.whatsapp}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-[var(--cream-soft)]">Desde {formatarData(a.data_registo)}</p>
+                    <p className="text-xs font-semibold text-[var(--mango)]">
+                      {estaAberto ? 'Fechar ▲' : `${a.historico?.length || 0} pedido(s) ▾`}
+                    </p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setApagar({ id: a.id, nome: a.nome })}
+                  className="shrink-0 rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--brick)] hover:bg-black/[0.04]"
+                >
+                  Apagar
+                </button>
+              </div>
 
               {estaAberto && (
                 <div className="mt-3 space-y-2 border-t border-black/10 pt-3">
@@ -98,6 +123,20 @@ export default function AdminAlunos() {
           );
         })}
       </div>
+
+      {apagar && (
+        <Modal
+          titulo="Apagar aluno"
+          aoFechar={() => setApagar(null)}
+          aoConfirmar={confirmarApagar}
+          textoConfirmar="Apagar"
+          aConfirmar={aApagar}
+          perigo
+        >
+          Tem a certeza de que quer apagar "{apagar.nome}"? Isto remove também todo o seu histórico de pedidos.
+          Esta ação não pode ser desfeita.
+        </Modal>
+      )}
     </AdminLayout>
   );
 }

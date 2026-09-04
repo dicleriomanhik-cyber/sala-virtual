@@ -76,7 +76,7 @@ router.get('/unidades/:id/temas', autenticarAlunoOpcional, async (req, res) => {
   }
 
   if (!temAcesso) {
-    // Nunca inclui link_youtube no JSON quando não há acesso confirmado e ativo
+    // Nunca inclui link_youtube nem pdf_url no JSON quando não há acesso confirmado e ativo
     return res.json({ unidade: { id: unidade.id, nome: unidade.nome, preco: unidade.preco }, tem_acesso: false, temas: temas.map((t) => ({ id: t.id, nome: t.nome, ordem: t.ordem })) });
   }
 
@@ -85,7 +85,11 @@ router.get('/unidades/:id/temas', autenticarAlunoOpcional, async (req, res) => {
     [unidadeId]
   );
 
-  res.json({ unidade: { id: unidade.id, nome: unidade.nome, preco: unidade.preco }, tem_acesso: true, temas: temasComLink });
+  res.json({
+    unidade: { id: unidade.id, nome: unidade.nome, preco: unidade.preco, pdf_url: unidade.pdf_url || null },
+    tem_acesso: true,
+    temas: temasComLink,
+  });
 });
 
 module.exports = router;

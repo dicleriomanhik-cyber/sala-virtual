@@ -135,6 +135,25 @@ export default function UnidadeTemas() {
                   <span className="text-sm font-medium text-[var(--cream)]">{t.nome}</span>
                 </a>
               ))}
+
+              {dados.unidade.pdf_url && (
+                <a
+                  href={dados.unidade.pdf_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  download
+                  className="flex items-center gap-3 rounded-xl bg-[var(--mango-soft)] p-3.5 transition hover:brightness-95"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--mango)]">
+                    <svg viewBox="0 0 24 24" className="h-4 w-4 stroke-[var(--mango-ink)]" fill="none" strokeWidth="2">
+                      <path d="M12 4v11" strokeLinecap="round" />
+                      <path d="M7.5 11.5 12 16l4.5-4.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M5 19.5h14" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  <span className="text-sm font-semibold text-[var(--mango)]">Baixar PDF da unidade</span>
+                </a>
+              )}
             </div>
           )}
 
