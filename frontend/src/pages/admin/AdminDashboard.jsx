@@ -44,8 +44,6 @@ function CartaoResumo({ titulo, valor, sub, corFundo, corIcone, icone, para }) {
   );
 }
 
-/* ---------- Gráfico de linha em SVG puro ---------- */
-
 function GraficoAcessos({ serie }) {
   if (!serie || serie.length === 0) {
     return (
@@ -93,7 +91,6 @@ function GraficoAcessos({ serie }) {
         role="img"
         aria-label="Gráfico de evolução de acessos nos últimos 7 dias"
       >
-        {/* Grelha horizontal + etiquetas do eixo Y */}
         {yEtiquetas.map((val, i) => {
           const y = paddingTop + alturaPlot - (val / maxValor) * alturaPlot;
           return (
@@ -107,23 +104,15 @@ function GraficoAcessos({ serie }) {
                 strokeWidth="1"
                 strokeDasharray="3 4"
               />
-              <text
-                x={paddingLeft - 6}
-                y={y + 4}
-                textAnchor="end"
-                fontSize="10"
-                fill="#8A94A6"
-              >
+              <text x={paddingLeft - 6} y={y + 4} textAnchor="end" fontSize="10" fill="#8A94A6">
                 {val}
               </text>
             </g>
           );
         })}
 
-        {/* Área sob a linha */}
         <path d={areaPath} fill="#1A73E8" fillOpacity="0.08" />
 
-        {/* Linha */}
         <path
           d={linhaPath}
           fill="none"
@@ -133,18 +122,11 @@ function GraficoAcessos({ serie }) {
           strokeLinejoin="round"
         />
 
-        {/* Pontos + etiquetas do eixo X */}
         {pontos.map((p, i) => (
           <g key={i}>
             <circle cx={p.x} cy={p.y} r="4" fill="#1A73E8" />
             <circle cx={p.x} cy={p.y} r="8" fill="#1A73E8" fillOpacity="0.12" />
-            <text
-              x={p.x}
-              y={altura - 10}
-              textAnchor="middle"
-              fontSize="10"
-              fill="#8A94A6"
-            >
+            <text x={p.x} y={altura - 10} textAnchor="middle" fontSize="10" fill="#8A94A6">
               {formatarDiaCurto(p.data)}
             </text>
           </g>
@@ -253,7 +235,7 @@ export default function AdminDashboard() {
           sub="Aulas de amostra configuradas"
           corFundo="var(--amber-soft)"
           corIcone="#7A4B0A"
-          para="/admin/unidades"
+          para="/admin/aulas-gratuitas"
           icone={
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
               <rect x="3" y="6" width="18" height="12" rx="2" />
@@ -368,14 +350,14 @@ export default function AdminDashboard() {
                 </svg>
               </Link>
 
-              <Link to="/admin/pagamentos" className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-black/[0.03]">
+              <Link to="/admin/aulas-gratuitas" className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-black/[0.03]">
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--amber-soft)] text-[#7A4B0A]">
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
                     <rect x="3" y="6" width="18" height="12" rx="2" />
-                    <path d="M3 10h18" strokeLinecap="round" />
+                    <path d="M10 9.5v5l4-2.5z" fill="currentColor" stroke="none" />
                   </svg>
                 </span>
-                <span className="flex-1 text-sm font-semibold text-[var(--ink)]">Ver Pagamentos</span>
+                <span className="flex-1 text-sm font-semibold text-[var(--ink)]">Aulas Gratuitas</span>
                 <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--mango)]" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>

@@ -115,6 +115,17 @@ async function migrate() {
       data_pedido TIMESTAMP NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS aulas_gratuitas (
+      id SERIAL PRIMARY KEY,
+      titulo TEXT NOT NULL,
+      classe TEXT,
+      disciplina TEXT,
+      link_youtube TEXT,
+      imagem_url TEXT,
+      ordem INTEGER NOT NULL DEFAULT 0,
+      ativo INTEGER NOT NULL DEFAULT 1
+    );
+
     ALTER TABLE configuracao
       ADD COLUMN IF NOT EXISTS email TEXT,
       ADD COLUMN IF NOT EXISTS morada TEXT,

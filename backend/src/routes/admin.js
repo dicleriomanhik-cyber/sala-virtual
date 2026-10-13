@@ -108,10 +108,11 @@ router.get('/me/tem-chave-recuperacao', async (req, res) => {
 // ---------- Dashboard ----------
 
 router.get('/dashboard/stats', async (req, res) => {
-  const [alunos, classes, acessos] = await Promise.all([
+  const [alunos, classes, acessos, aulasGratuitasRow] = await Promise.all([
     db.all('SELECT id FROM alunos'),
     db.all('SELECT id, nome, video_gratuito_url FROM classes ORDER BY id'),
     db.all('SELECT id, estado FROM acessos'),
+    db.get('SELECT COUNT(*)::int AS n FROM aulas_gratuitas WHERE ativo = 1'),
   ]);
 
   const porClasse = await Promise.all(
@@ -122,14 +123,13 @@ router.get('/dashboard/stats', async (req, res) => {
   );
 
   const totalUnidades = porClasse.reduce((soma, c) => soma + c.unidades, 0);
-  const totalAulasGratuitas = classes.filter((c) => c.video_gratuito_url).length;
   const totalPagamentos = acessos.filter((a) => a.estado === 'pago').length;
   const pedidosPendentes = acessos.filter((a) => a.estado === 'pendente').length;
 
   res.json({
     total_alunos: alunos.length,
     total_unidades: totalUnidades,
-    total_aulas_gratuitas: totalAulasGratuitas,
+    total_aulas_gratuitas: aulasGratuitasRow.n,
     total_pagamentos: totalPagamentos,
     pedidos_pendentes: pedidosPendentes,
     por_classe: porClasse,
@@ -232,7 +232,51 @@ router.get('/notificacoes', async (req, res) => {
   res.json(notificacoes.slice(0, 10));
 });
 
-// ---------- Classes (CRUD) ----------
+// ---------- Aulas Gratuitas ----------
+
+router.get('/aulas-gratuitas', async (req, res) => {
+  res.json(await db.all('SELECT * FROM aulas_gratuitas ORDER BY ordem, id'));
+});
+
+router.post('/aulas-gratuitas', async (req, res) => {
+  const { titulo, classe, disciplina, link_youtube, imagem_url, ordem, ativo } = req.body || {};
+  if (!titulo) return res.status(400).json({ erro: 'titulo é obrigatório' });
+  const info = await db.run(
+    `INSERT INTO aulas_gratuitas (titulo, classe, disciplina, link_youtube, imagem_url, ordem, ativo)
+     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    [titulo, classe || null, disciplina || null, link_youtube || null, imagem_url || null, ordem ?? 0, ativo === false ? 0 : 1]
+  );
+  res.status(201).json(await db.get('SELECT * FROM aulas_gratuitas WHERE id = ?', [info.id]));
+});
+
+router.put('/aulas-gratuitas/:id', async (req, res) => {
+  const existente = await db.get('SELECT * FROM aulas_gratuitas WHERE id = ?', [req.params.id]);
+  if (!existente) return res.status(404).json({ erro: 'Aula não encontrada' });
+  const { titulo, classe, disciplina, link_youtube, imagem_url, ordem, ativo } = req.body || {};
+  await db.run(
+    `UPDATE aulas_gratuitas SET titulo = ?, classe = ?, disciplina = ?, link_youtube = ?, imagem_url = ?, ordem = ?, ativo = ? WHERE id = ?`,
+    [
+      titulo ?? existente.titulo,
+      classe !== undefined ? classe : existente.classe,
+      disciplina !== undefined ? disciplina : existente.disciplina,
+      link_youtube !== undefined ? link_youtube : existente.link_youtube,
+      imagem_url !== undefined ? imagem_url : existente.imagem_url,
+      ordem ?? existente.ordem,
+      ativo === undefined ? existente.ativo : (ativo ? 1 : 0),
+      req.params.id,
+    ]
+  );
+  res.json(await db.get('SELECT * FROM aulas_gratuitas WHERE id = ?', [req.params.id]));
+});
+
+router.delete('/aulas-gratuitas/:id', async (req, res) => {
+  const existente = await db.get('SELECT id FROM aulas_gratuitas WHERE id = ?', [req.params.id]);
+  if (!existente) return res.status(404).json({ erro: 'Aula não encontrada' });
+  await db.run('DELETE FROM aulas_gratuitas WHERE id = ?', [req.params.id]);
+  res.status(204).end();
+});
+
+// ---------- Classes ----------
 
 router.get('/classes', async (req, res) => {
   res.json(await db.all('SELECT * FROM classes ORDER BY id'));

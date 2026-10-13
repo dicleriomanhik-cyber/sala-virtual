@@ -201,16 +201,15 @@ export default function AdminUnidades() {
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => alert('Edição de unidade — será implementado quando o backend fornecer o endpoint.')}
+                          <Link
+                            to={`/admin/unidades/${u.id}`}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--mango)] transition hover:bg-[var(--mango-soft)]"
                             aria-label={`Editar ${u.nome}`}
                           >
                             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
                               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
-                          </button>
+                          </Link>
                           <button
                             type="button"
                             onClick={() => setApagar({ id: u.id, nome: u.nome })}
@@ -284,48 +283,6 @@ export default function AdminUnidades() {
               <ResumoMini label="Total" valor={total} cor="var(--mango-soft)" iconColor="var(--mango)" />
               <ResumoMini label="Ativas" valor={activas} cor="var(--teal-soft)" iconColor="var(--teal)" />
               <ResumoMini label="Inativas" valor={inativas} cor="var(--brick-soft)" iconColor="var(--brick)" />
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-[var(--paper)] p-5 shadow-sm">
-            <h3 className="font-display text-base font-semibold text-[var(--ink)]">
-              Ações Rápidas
-            </h3>
-            <div className="mt-4 space-y-2">
-              <Link
-                to="/admin/conteudo"
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-black/[0.03]"
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--mango-soft)] text-[var(--mango)]">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-                  </svg>
-                </span>
-                <span className="text-sm font-semibold text-[var(--ink)]">Nova Unidade</span>
-              </Link>
-              <Link
-                to="/admin/pedidos"
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-black/[0.03]"
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--mango-soft)] text-[var(--mango)]">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <rect x="3" y="5.5" width="18" height="13" rx="2" />
-                  </svg>
-                </span>
-                <span className="text-sm font-semibold text-[var(--ink)]">Ver Pedidos de Acesso</span>
-              </Link>
-              <Link
-                to="/admin/configuracoes"
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-black/[0.03]"
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--mango-soft)] text-[var(--mango)]">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3" strokeLinecap="round" />
-                  </svg>
-                </span>
-                <span className="text-sm font-semibold text-[var(--ink)]">Configurações</span>
-              </Link>
             </div>
           </div>
         </aside>

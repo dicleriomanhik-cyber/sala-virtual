@@ -14,6 +14,7 @@ import Perfil from './pages/Perfil';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminRecuperar from './pages/admin/AdminRecuperar';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminAulasGratuitas from './pages/admin/AdminAulasGratuitas';
 import AdminUnidades from './pages/admin/AdminUnidades';
 import AdminUnidadeDetalhe from './pages/admin/AdminUnidadeDetalhe';
 import AdminPagamentos from './pages/admin/AdminPagamentos';
@@ -47,6 +48,14 @@ export default function App() {
                 element={
                   <ProtectedAdminRoute>
                     <AdminDashboard />
+                  </ProtectedAdminRoute>
+                }
+              />
+              <Route
+                path="/admin/aulas-gratuitas"
+                element={
+                  <ProtectedAdminRoute>
+                    <AdminAulasGratuitas />
                   </ProtectedAdminRoute>
                 }
               />

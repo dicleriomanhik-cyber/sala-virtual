@@ -5,6 +5,7 @@ const { estadoVisivel, acessoAtivo } = require('../utils/helpers');
 
 const router = express.Router();
 
+// GET /api/config — configuração pública
 router.get('/config', async (req, res) => {
   const cfg = await db.get(
     `SELECT nome_escola, logo_url, whatsapp_admin, duracao_acesso_dias,
@@ -14,11 +15,13 @@ router.get('/config', async (req, res) => {
   res.json(cfg);
 });
 
+// GET /api/classes
 router.get('/classes', async (req, res) => {
   const classes = await db.all('SELECT id, nome, video_gratuito_url FROM classes ORDER BY id');
   res.json(classes);
 });
 
+// GET /api/classes/:id/unidades
 router.get('/classes/:id/unidades', autenticarAlunoOpcional, async (req, res) => {
   const classeId = Number(req.params.id);
 
@@ -59,6 +62,7 @@ router.get('/classes/:id/unidades', autenticarAlunoOpcional, async (req, res) =>
   res.json(lista);
 });
 
+// GET /api/unidades/:id/temas
 router.get('/unidades/:id/temas', autenticarAlunoOpcional, async (req, res) => {
   const unidadeId = Number(req.params.id);
 
@@ -120,6 +124,17 @@ router.get('/unidades/:id/temas', autenticarAlunoOpcional, async (req, res) => {
     tem_acesso: true,
     temas: temasComLink,
   });
+});
+
+// GET /api/aulas-gratuitas — lista pública de aulas gratuitas
+router.get('/aulas-gratuitas', async (req, res) => {
+  const aulas = await db.all(
+    `SELECT id, titulo, classe, disciplina, link_youtube, imagem_url, ordem
+     FROM aulas_gratuitas
+     WHERE ativo = 1
+     ORDER BY ordem, id`
+  );
+  res.json(aulas);
 });
 
 module.exports = router;
