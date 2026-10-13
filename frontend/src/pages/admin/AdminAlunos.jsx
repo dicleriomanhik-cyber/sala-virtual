@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiAdmin } from '../../api/client';
 import AdminLayout from '../../components/admin/AdminLayout';
 import StatusBadge from '../../components/StatusBadge';
 import MensagemErro from '../../components/MensagemErro';
 import Modal from '../../components/admin/Modal';
-
-const POR_PAGINA = 8;
 
 function formatarData(iso) {
   if (!iso) return '—';
@@ -56,58 +54,56 @@ export default function AdminAlunos() {
   const [busca, setBusca] = useState('');
   const [filtroClasse, setFiltroClasse] = useState('todas');
   const [filtroEstado, setFiltroEstado] = useState('todos');
-  const [pagina, setPagina] = useState(1);
   const [apagar, setApagar] = useState(null);
   const [aApagar, setAApagar] = useState(false);
 
+  // Recarrega do servidor sempre que a busca muda (debounce via setTimeout)
   useEffect(() => {
-    apiAdmin
-      .get('/admin/alunos')
-      .then(setLista)
-      .catch((e) => setErro(e.message));
-  }, []);
+    let cancelado = false;
+    setLista(null);
 
-  useEffect(() => {
-    setPagina(1);
-  }, [busca, filtroClasse, filtroEstado]);
+    const timer = setTimeout(() => {
+      const url = busca.trim()
+        ? `/admin/alunos?busca=${encodeURIComponent(busca.trim())}`
+        : '/admin/alunos';
 
-  const filtrados = useMemo(() => {
-    if (!lista) return [];
-    const alvo = busca.trim().toLowerCase();
-    return lista.filter((a) => {
-      if (alvo) {
-        const bate =
-          a.nome?.toLowerCase().includes(alvo) ||
-          a.whatsapp?.includes(alvo);
-        if (!bate) return false;
-      }
-      if (filtroClasse !== 'todas') {
-        const classes = classesDoAluno(a);
-        if (!classes.includes(filtroClasse)) return false;
-      }
-      if (filtroEstado !== 'todos') {
-        const estado = a.estado || 'activo';
-        if (estado !== filtroEstado) return false;
-      }
-      return true;
-    });
-  }, [lista, busca, filtroClasse, filtroEstado]);
+      apiAdmin
+        .get(url)
+        .then((dados) => {
+          if (!cancelado) setLista(dados);
+        })
+        .catch((e) => {
+          if (!cancelado) setErro(e.message);
+        });
+    }, 300);
 
-  const totalPaginas = Math.max(1, Math.ceil((filtrados?.length || 0) / POR_PAGINA));
-  const inicio = (pagina - 1) * POR_PAGINA;
-  const fim = inicio + POR_PAGINA;
-  const paginaActual = filtrados.slice(inicio, fim);
+    return () => {
+      cancelado = true;
+      clearTimeout(timer);
+    };
+  }, [busca]);
+
+  // Filtros aplicados no cliente (rápidos, poucos dados)
+  const filtrados = (lista || []).filter((a) => {
+    if (filtroClasse !== 'todas') {
+      const classes = classesDoAluno(a);
+      if (!classes.includes(filtroClasse)) return false;
+    }
+    if (filtroEstado !== 'todos') {
+      const estado = a.estado || 'activo';
+      if (estado !== filtroEstado) return false;
+    }
+    return true;
+  });
 
   const totalAlunos = lista?.length ?? 0;
-  const ativos = lista?.filter((a) => (a.estado || 'activo') === 'activo').length ?? 0;
-  const pendentes = lista?.filter((a) => a.estado === 'pendente').length ?? 0;
 
   async function confirmarApagar() {
     setAApagar(true);
     setErro('');
     try {
       await apiAdmin.del(`/admin/alunos/${apagar.id}`);
-      setLista((ls) => ls.filter((a) => a.id !== apagar.id));
+      setLista((ls) => (ls || []).filter((a) => a.id !== apagar.id));
       setApagar(null);
     } catch (e) {
       setErro(e.message);
@@ -118,7 +114,6 @@ export default function AdminAlunos() {
 
   return (
     <AdminLayout>
-      {/* Banner */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#E8F0FE] via-[#D9E6FB] to-[#C7DAF8] shadow-sm">
         <div
           aria-hidden="true"
@@ -214,7 +209,7 @@ export default function AdminAlunos() {
             </p>
           )}
 
-          {paginaActual.length > 0 && (
+          {filtrados.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-[var(--paper-soft)] text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">
@@ -228,7 +223,7 @@ export default function AdminAlunos() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginaActual.map((a) => (
+                  {filtrados.map((a) => (
                     <tr key={a.id} className="border-t border-black/5 transition hover:bg-black/[0.02]">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
@@ -270,51 +265,6 @@ export default function AdminAlunos() {
               </table>
             </div>
           )}
-
-          {/* Paginação */}
-          {filtrados.length > 0 && (
-            <div className="flex flex-col items-center justify-between gap-3 border-t border-black/5 px-5 py-4 sm:flex-row">
-              <p className="text-xs text-[var(--cream-soft)]">
-                Mostrando {inicio + 1}–{Math.min(fim, filtrados.length)} de {filtrados.length} alunos
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setPagina((p) => Math.max(1, p - 1))}
-                  disabled={pagina === 1}
-                  className="rounded-lg border border-black/10 px-2.5 py-1 text-sm font-semibold text-[var(--cream-soft)] transition hover:bg-black/[0.04] disabled:opacity-40"
-                >
-                  ‹
-                </button>
-                {Array.from({ length: totalPaginas }).slice(0, 5).map((_, i) => {
-                  const num = i + 1;
-                  return (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setPagina(num)}
-                      className={`min-w-[32px] rounded-lg px-2.5 py-1 text-sm font-semibold transition ${
-                        pagina === num
-                          ? 'bg-[var(--mango)] text-[var(--mango-ink)]'
-                          : 'text-[var(--cream-soft)] hover:bg-black/[0.04]'
-                      }`}
-                    >
-                      {num}
-                    </button>
-                  );
-                })}
-                {totalPaginas > 5 && <span className="px-1 text-[var(--cream-soft)]">…</span>}
-                <button
-                  type="button"
-                  onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-                  disabled={pagina === totalPaginas}
-                  className="rounded-lg border border-black/10 px-2.5 py-1 text-sm font-semibold text-[var(--cream-soft)] transition hover:bg-black/[0.04] disabled:opacity-40"
-                >
-                  ›
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Painel lateral */}
@@ -337,50 +287,6 @@ export default function AdminAlunos() {
                   {totalAlunos}
                 </p>
                 <p className="text-xs text-[var(--cream-soft)]">Registados na plataforma</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-[var(--paper)] p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--teal-soft)] text-[var(--teal)]">
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="m8.5 12 2.5 2.5L16 9" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">
-                  Ativos
-                </p>
-                <p className="mt-1 font-display text-2xl font-semibold text-[var(--ink)]">
-                  {ativos}
-                </p>
-                <p className="text-xs text-[var(--cream-soft)]">
-                  {totalAlunos > 0 ? Math.round((ativos / totalAlunos) * 100) : 0}% do total
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl bg-[var(--paper)] p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--amber-soft)] text-[#7A4B0A]">
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">
-                  Pendentes
-                </p>
-                <p className="mt-1 font-display text-2xl font-semibold text-[var(--ink)]">
-                  {pendentes}
-                </p>
-                <p className="text-xs text-[var(--cream-soft)]">
-                  {totalAlunos > 0 ? Math.round((pendentes / totalAlunos) * 100) : 0}% do total
-                </p>
               </div>
             </div>
           </div>

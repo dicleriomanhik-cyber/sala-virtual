@@ -10,6 +10,12 @@ function formatarData(iso) {
   return new Date(iso).toLocaleDateString('pt-MZ', { day: '2-digit', month: 'short' });
 }
 
+function formatarDiaCurto(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('pt-MZ', { day: '2-digit', month: '2-digit' });
+}
+
 function CartaoResumo({ titulo, valor, sub, corFundo, corIcone, icone, para }) {
   return (
     <Link
@@ -38,22 +44,135 @@ function CartaoResumo({ titulo, valor, sub, corFundo, corIcone, icone, para }) {
   );
 }
 
+/* ---------- Gráfico de linha em SVG puro ---------- */
+
+function GraficoAcessos({ serie }) {
+  if (!serie || serie.length === 0) {
+    return (
+      <div className="mt-5 flex h-52 w-full items-center justify-center rounded-xl bg-gradient-to-br from-[#F4F8FE] to-[#E8F0FE]">
+        <p className="text-sm text-[var(--cream-soft)]">A carregar dados…</p>
+      </div>
+    );
+  }
+
+  const largura = 600;
+  const altura = 200;
+  const paddingTop = 20;
+  const paddingBottom = 30;
+  const paddingLeft = 30;
+  const paddingRight = 20;
+
+  const valores = serie.map((s) => s.total);
+  const maxValor = Math.max(...valores, 1);
+
+  const larguraPlot = largura - paddingLeft - paddingRight;
+  const alturaPlot = altura - paddingTop - paddingBottom;
+
+  const pontos = serie.map((s, i) => {
+    const x = paddingLeft + (i / (serie.length - 1 || 1)) * larguraPlot;
+    const y = paddingTop + alturaPlot - (s.total / maxValor) * alturaPlot;
+    return { x, y, valor: s.total, data: s.data };
+  });
+
+  const linhaPath = pontos
+    .map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`))
+    .join(' ');
+
+  const areaPath =
+    linhaPath +
+    ` L ${pontos[pontos.length - 1].x} ${paddingTop + alturaPlot}` +
+    ` L ${pontos[0].x} ${paddingTop + alturaPlot} Z`;
+
+  const yEtiquetas = [0, Math.ceil(maxValor / 2), maxValor];
+
+  return (
+    <div className="mt-5 w-full rounded-xl bg-gradient-to-br from-[#F4F8FE] to-[#E8F0FE] p-2">
+      <svg
+        viewBox={`0 0 ${largura} ${altura}`}
+        className="h-52 w-full"
+        role="img"
+        aria-label="Gráfico de evolução de acessos nos últimos 7 dias"
+      >
+        {/* Grelha horizontal + etiquetas do eixo Y */}
+        {yEtiquetas.map((val, i) => {
+          const y = paddingTop + alturaPlot - (val / maxValor) * alturaPlot;
+          return (
+            <g key={i}>
+              <line
+                x1={paddingLeft}
+                x2={largura - paddingRight}
+                y1={y}
+                y2={y}
+                stroke="#D9E6FB"
+                strokeWidth="1"
+                strokeDasharray="3 4"
+              />
+              <text
+                x={paddingLeft - 6}
+                y={y + 4}
+                textAnchor="end"
+                fontSize="10"
+                fill="#8A94A6"
+              >
+                {val}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Área sob a linha */}
+        <path d={areaPath} fill="#1A73E8" fillOpacity="0.08" />
+
+        {/* Linha */}
+        <path
+          d={linhaPath}
+          fill="none"
+          stroke="#1A73E8"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Pontos + etiquetas do eixo X */}
+        {pontos.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="4" fill="#1A73E8" />
+            <circle cx={p.x} cy={p.y} r="8" fill="#1A73E8" fillOpacity="0.12" />
+            <text
+              x={p.x}
+              y={altura - 10}
+              textAnchor="middle"
+              fontSize="10"
+              fill="#8A94A6"
+            >
+              {formatarDiaCurto(p.data)}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [atividade, setAtividade] = useState(null);
+  const [serie, setSerie] = useState(null);
   const [erro, setErro] = useState('');
 
   useEffect(() => {
     let activo = true;
     (async () => {
       try {
-        const [s, a] = await Promise.all([
+        const [s, a, ser] = await Promise.all([
           apiAdmin.get('/admin/dashboard/stats').catch(() => null),
           apiAdmin.get('/admin/dashboard/atividade').catch(() => []),
+          apiAdmin.get('/admin/dashboard/series?dias=7').catch(() => null),
         ]);
         if (!activo) return;
         setStats(s);
         setAtividade(a);
+        setSerie(ser);
       } catch {
         if (activo) setErro('Não foi possível carregar o painel.');
       }
@@ -174,13 +293,7 @@ export default function AdminDashboard() {
               </span>
             </div>
 
-            <div className="mt-5 h-52 w-full rounded-xl bg-gradient-to-br from-[#F4F8FE] to-[#E8F0FE] p-4">
-              <div className="flex h-full items-center justify-center">
-                <p className="text-sm text-[var(--cream-soft)]">
-                  Dados disponíveis quando o backend fornecer séries temporais.
-                </p>
-              </div>
-            </div>
+            <GraficoAcessos serie={serie} />
           </div>
 
           <div className="rounded-2xl bg-[var(--paper)] p-5 shadow-sm md:p-6">

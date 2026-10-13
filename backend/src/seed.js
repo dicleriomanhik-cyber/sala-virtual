@@ -1,6 +1,6 @@
 require('dotenv').config();
 const db = require('./db');
-const { hashValor } = require('./utils/auth');
+const { hashValor, gerarChaveRecuperacao } = require('./utils/auth');
 
 // Programa real de Física — 12ª Classe — Prof. Bento Jeremias Queha
 // Preços e links do YouTube ficam em placeholder: preencher depois pelo painel admin.
@@ -62,7 +62,6 @@ const PROGRAMA = [
   },
 ];
 
-// Preço-placeholder por unidade (em MZN) — ajustar depois pelo painel admin
 const PRECO_PLACEHOLDER = 500;
 
 async function seed() {
@@ -103,8 +102,27 @@ async function seed() {
   // Admin de exemplo (username: admin / password: admin123) — trocar em produção!
   const jaTemAdmin = (await db.get('SELECT COUNT(*) AS n FROM admins')).n > 0;
   if (!jaTemAdmin) {
-    await db.run('INSERT INTO admins (username, password_hash) VALUES (?, ?)', ['admin', hashValor('admin123')]);
-    console.log('Admin criado -> username: admin | password: admin123 (troque depois!)');
+    const chave = gerarChaveRecuperacao();
+    const chaveHash = hashValor(chave);
+
+    await db.run(
+      'INSERT INTO admins (username, password_hash, recovery_key_hash) VALUES (?, ?, ?)',
+      ['admin', hashValor('admin123'), chaveHash]
+    );
+
+    console.log('');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('  ADMIN CRIADO');
+    console.log('  Username: admin');
+    console.log('  Password: admin123  (troque depois!)');
+    console.log('');
+    console.log('  CHAVE DE RECUPERAÇÃO (guarde agora!):');
+    console.log('  ' + chave);
+    console.log('');
+    console.log('  Esta chave NÃO será mostrada novamente.');
+    console.log('  Use-a em /admin/recuperar se esquecer a password.');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('');
   }
 
   console.log(`Seed concluído: 1 classe, ${PROGRAMA.length} unidades, ${totalTemas} temas.`);

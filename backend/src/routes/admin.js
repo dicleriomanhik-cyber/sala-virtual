@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { hashValor, compararValor, gerarToken } = require('../utils/auth');
+const { hashValor, compararValor, gerarToken, gerarChaveRecuperacao } = require('../utils/auth');
 const { autenticarAdmin } = require('../middleware/auth');
 const { hojeISO, adicionarDias, estadoVisivel } = require('../utils/helpers');
 
@@ -21,17 +21,45 @@ router.post('/login', async (req, res) => {
   res.json({ token, admin: { id: admin.id, username: admin.username } });
 });
 
+// ---------- Recuperar password (público) ----------
+
+router.post('/recuperar-password', async (req, res) => {
+  const { username, recoveryKey, novaPassword } = req.body || {};
+  if (!username || !recoveryKey || !novaPassword) {
+    return res.status(400).json({ erro: 'username, recoveryKey e novaPassword são obrigatórios' });
+  }
+  if (novaPassword.length < 4) {
+    return res.status(400).json({ erro: 'A nova password deve ter pelo menos 4 caracteres' });
+  }
+
+  const admin = await db.get('SELECT * FROM admins WHERE username = ?', [username]);
+  if (!admin || !admin.recovery_key_hash) {
+    return res.status(401).json({ erro: 'Dados de recuperação inválidos' });
+  }
+  if (!compararValor(recoveryKey.trim().toUpperCase(), admin.recovery_key_hash)) {
+    return res.status(401).json({ erro: 'Dados de recuperação inválidos' });
+  }
+
+  const novoHash = hashValor(novaPassword);
+  await db.run(
+    'UPDATE admins SET password_hash = ?, recovery_key_hash = NULL WHERE id = ?',
+    [novoHash, admin.id]
+  );
+
+  res.json({ ok: true, mensagem: 'Password alterada. A chave de recuperação foi invalidada.' });
+});
+
 // A partir daqui, todas as rotas exigem admin autenticado
 router.use(autenticarAdmin);
 
-// GET /api/admin/me
+// ---------- Me ----------
+
 router.get('/me', async (req, res) => {
   const admin = await db.get('SELECT id, username FROM admins WHERE id = ?', [req.admin.id]);
   if (!admin) return res.status(404).json({ erro: 'Admin não encontrado' });
   res.json(admin);
 });
 
-// PUT /api/admin/me
 router.put('/me', async (req, res) => {
   const { passwordAtual, novoUsername, novaPassword } = req.body || {};
   if (!passwordAtual) {
@@ -63,9 +91,22 @@ router.put('/me', async (req, res) => {
   res.json({ ok: true, admin: { id: admin.id, username: usernameFinal } });
 });
 
+router.post('/me/gerar-chave-recuperacao', async (req, res) => {
+  const chave = gerarChaveRecuperacao();
+  const hash = hashValor(chave);
+
+  await db.run('UPDATE admins SET recovery_key_hash = ? WHERE id = ?', [hash, req.admin.id]);
+
+  res.json({ ok: true, recovery_key: chave });
+});
+
+router.get('/me/tem-chave-recuperacao', async (req, res) => {
+  const admin = await db.get('SELECT recovery_key_hash FROM admins WHERE id = ?', [req.admin.id]);
+  res.json({ tem_chave: !!admin?.recovery_key_hash });
+});
+
 // ---------- Dashboard ----------
 
-// GET /api/admin/dashboard/stats — agrega tudo num só pedido
 router.get('/dashboard/stats', async (req, res) => {
   const [alunos, classes, acessos] = await Promise.all([
     db.all('SELECT id FROM alunos'),
@@ -95,7 +136,6 @@ router.get('/dashboard/stats', async (req, res) => {
   });
 });
 
-// GET /api/admin/dashboard/atividade — últimos pedidos
 router.get('/dashboard/atividade', async (req, res) => {
   const linhas = await db.all(
     `SELECT a.id, a.estado, a.data_pedido,
@@ -118,6 +158,78 @@ router.get('/dashboard/atividade', async (req, res) => {
   }));
 
   res.json(resultado);
+});
+
+router.get('/dashboard/series', async (req, res) => {
+  const dias = Math.min(Math.max(Number(req.query.dias) || 7, 1), 90);
+
+  const resultado = await db.all(
+    `SELECT DATE(data_pedido::timestamp) AS dia, COUNT(*)::int AS total
+     FROM acessos
+     WHERE data_pedido::timestamp >= NOW() - INTERVAL '1 day' * $1
+     GROUP BY DATE(data_pedido::timestamp)
+     ORDER BY dia ASC`,
+    [dias]
+  );
+
+  const mapa = new Map(resultado.map((r) => [r.dia.toISOString().slice(0, 10), r.total]));
+  const serie = [];
+  for (let i = dias - 1; i >= 0; i -= 1) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const chave = d.toISOString().slice(0, 10);
+    serie.push({ data: chave, total: mapa.get(chave) || 0 });
+  }
+
+  res.json(serie);
+});
+
+// ---------- Notificações ----------
+
+router.get('/notificacoes', async (req, res) => {
+  const notificacoes = [];
+
+  const pendentes = await db.all(
+    `SELECT a.id, a.data_pedido, al.nome AS aluno_nome, u.nome AS unidade_nome
+     FROM acessos a
+     JOIN alunos al ON al.id = a.aluno_id
+     JOIN unidades u ON u.id = a.unidade_id
+     WHERE a.estado = 'pendente'
+     ORDER BY a.data_pedido DESC
+     LIMIT 5`
+  );
+  pendentes.forEach((p) => {
+    notificacoes.push({
+      id: `pedido-${p.id}`,
+      tipo: 'pedido',
+      titulo: `${p.aluno_nome} pediu acesso`,
+      descricao: p.unidade_nome,
+      data: p.data_pedido,
+      link: '/admin/pagamentos',
+    });
+  });
+
+  const novos = await db.all(
+    `SELECT id, nome, data_registo
+     FROM alunos
+     WHERE data_registo::timestamp >= NOW() - INTERVAL '7 days'
+     ORDER BY data_registo DESC
+     LIMIT 5`
+  );
+  novos.forEach((n) => {
+    notificacoes.push({
+      id: `aluno-${n.id}`,
+      tipo: 'aluno',
+      titulo: `Novo aluno: ${n.nome}`,
+      descricao: 'Registado recentemente',
+      data: n.data_registo,
+      link: '/admin/alunos',
+    });
+  });
+
+  notificacoes.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+  res.json(notificacoes.slice(0, 10));
 });
 
 // ---------- Classes (CRUD) ----------
@@ -265,17 +377,30 @@ router.post('/temas/reordenar', async (req, res) => {
 // ---------- Acessos ----------
 
 router.get('/acessos', async (req, res) => {
-  const linhas = await db.all(
-    `SELECT a.*, al.nome AS aluno_nome, al.whatsapp AS aluno_whatsapp, u.nome AS unidade_nome, u.preco AS unidade_preco
-     FROM acessos a
-     JOIN alunos al ON al.id = a.aluno_id
-     JOIN unidades u ON u.id = a.unidade_id
-     ORDER BY a.data_pedido DESC`
-  );
+  const { estado, busca } = req.query;
 
+  let sql = `
+    SELECT a.*, al.nome AS aluno_nome, al.whatsapp AS aluno_whatsapp,
+           u.nome AS unidade_nome, u.preco AS unidade_preco
+    FROM acessos a
+    JOIN alunos al ON al.id = a.aluno_id
+    JOIN unidades u ON u.id = a.unidade_id
+  `;
+  const params = [];
+  const where = [];
+
+  if (busca && busca.trim()) {
+    where.push('(LOWER(al.nome) LIKE LOWER(?) OR LOWER(u.nome) LIKE LOWER(?) OR a.codigo_referencia LIKE ?)');
+    const termo = `%${busca.trim()}%`;
+    params.push(termo, termo, termo);
+  }
+
+  if (where.length) sql += ' WHERE ' + where.join(' AND ');
+  sql += ' ORDER BY a.data_pedido DESC';
+
+  const linhas = await db.all(sql, params);
   let resultado = linhas.map((a) => ({ ...a, estado_visivel: estadoVisivel(a) }));
 
-  const { estado } = req.query;
   if (estado) {
     resultado = resultado.filter((a) => a.estado_visivel === estado);
   }
@@ -316,7 +441,19 @@ router.post('/acessos/:id/rejeitar', async (req, res) => {
 // ---------- Alunos ----------
 
 router.get('/alunos', async (req, res) => {
-  const alunos = await db.all('SELECT id, nome, whatsapp, data_registo FROM alunos ORDER BY data_registo DESC');
+  const { busca } = req.query;
+
+  let sql = 'SELECT id, nome, whatsapp, data_registo FROM alunos';
+  const params = [];
+
+  if (busca && busca.trim()) {
+    sql += ' WHERE LOWER(nome) LIKE LOWER(?) OR whatsapp LIKE ?';
+    params.push(`%${busca.trim()}%`, `%${busca.trim()}%`);
+  }
+
+  sql += ' ORDER BY data_registo DESC';
+
+  const alunos = await db.all(sql, params);
   const resultado = await Promise.all(
     alunos.map(async (al) => {
       const historico = (

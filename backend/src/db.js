@@ -109,6 +109,12 @@ async function migrate() {
       password_hash TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS recuperacoes_pin (
+      id SERIAL PRIMARY KEY,
+      whatsapp TEXT NOT NULL,
+      data_pedido TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
     ALTER TABLE configuracao
       ADD COLUMN IF NOT EXISTS email TEXT,
       ADD COLUMN IF NOT EXISTS morada TEXT,
@@ -123,6 +129,9 @@ async function migrate() {
     ALTER TABLE temas
       ADD COLUMN IF NOT EXISTS descricao TEXT,
       ADD COLUMN IF NOT EXISTS miniatura_url TEXT;
+
+    ALTER TABLE admins
+      ADD COLUMN IF NOT EXISTS recovery_key_hash TEXT;
   `);
 
   const cfg = await get('SELECT id FROM configuracao WHERE id = 1');

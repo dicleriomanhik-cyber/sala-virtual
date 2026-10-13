@@ -53,36 +53,32 @@ export default function Login() {
         <AtomoDecorativo />
 
         <div className="relative overflow-hidden rounded-3xl bg-[var(--paper)] shadow-lg">
-          <div className="grid md:grid-cols-2">
-            <div className="relative order-2 hidden md:block">
-              <img
-                src="/images/login-lateral.png"
-                alt=""
-                className="h-full w-full object-cover object-center"
-                loading="lazy"
-              />
-            </div>
-
+          <div className="relative grid md:grid-cols-2">
             <div
               aria-hidden="true"
               className="absolute inset-0 bg-[url('/images/login-lateral.png')] bg-cover bg-center opacity-15 md:hidden"
             />
 
-            <div className="relative z-10 order-1 p-6 md:p-10 lg:p-12">
-              <h1 className="font-display text-2xl font-semibold leading-tight text-[var(--ink)] md:text-3xl">
-                Bem-vindo de volta
-              </h1>
-              <p className="mt-2 text-sm text-[var(--ink-soft)]">
-                Entre para continuar o seu percurso de aprendizagem.
-              </p>
+            <div className="relative z-10 p-6 md:p-10 lg:p-12">
+              <div className="mb-6 flex flex-col items-start gap-2">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--mango)] font-display text-base font-bold text-[var(--mango-ink)]">
+                  FIS
+                </span>
+                <h1 className="font-display text-2xl font-semibold leading-tight text-[var(--ink)] md:text-3xl">
+                  Bem-vindo de volta
+                </h1>
+                <p className="text-sm text-[var(--ink-soft)]">
+                  Entre para continuar o seu percurso de aprendizagem.
+                </p>
+              </div>
 
-              <form onSubmit={aoSubmeter} className="mt-6 space-y-4">
+              <form onSubmit={aoSubmeter} className="space-y-4">
                 <Campo label="Número de WhatsApp">
                   <input
                     required
                     value={whatsapp}
                     onChange={(e) => setWhatsapp(e.target.value)}
-                    placeholder="Ex: 84 111 1111"
+                    placeholder="Ex: 258845709653"
                     inputMode="tel"
                     className="campo"
                   />
@@ -111,12 +107,12 @@ export default function Login() {
               </form>
 
               <p className="mt-4 text-center text-sm">
-                <button
-                  type="button"
+                <Link
+                  to="/recuperar-pin"
                   className="font-medium text-[var(--mango)] hover:underline"
                 >
                   Esqueceu o PIN?
-                </button>
+                </Link>
               </p>
 
               <p className="mt-4 text-center text-sm text-[var(--ink-soft)]">
@@ -129,6 +125,15 @@ export default function Login() {
                   Criar conta
                 </Link>
               </p>
+            </div>
+
+            <div className="relative hidden md:block">
+              <img
+                src="/images/login-lateral.png"
+                alt=""
+                className="h-full w-full object-cover object-center"
+                loading="lazy"
+              />
             </div>
           </div>
         </div>

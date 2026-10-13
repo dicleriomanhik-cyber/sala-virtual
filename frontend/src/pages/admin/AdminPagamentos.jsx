@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiAdmin } from '../../api/client';
 import AdminLayout from '../../components/admin/AdminLayout';
 import StatusBadge from '../../components/StatusBadge';
 import MensagemErro from '../../components/MensagemErro';
-
-const POR_PAGINA = 8;
 
 const FILTROS = [
   { valor: '', label: 'Todos' },
@@ -50,50 +48,49 @@ export default function AdminPagamentos() {
   const [erro, setErro] = useState('');
   const [busca, setBusca] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
-  const [pagina, setPagina] = useState(1);
 
-  const carregar = useCallback(async () => {
-    try {
-      const todos = await apiAdmin.get('/admin/acessos').catch(() => []);
-      setLista(todos);
-    } catch (e) {
-      setErro(e.message);
-    }
-  }, []);
-
+  // Carrega do servidor sempre que busca ou estado mudam (debounce 300ms)
   useEffect(() => {
-    carregar();
-  }, [carregar]);
+    let cancelado = false;
+    setLista(null);
 
-  useEffect(() => {
-    setPagina(1);
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (filtroEstado) params.append('estado', filtroEstado);
+      if (busca.trim()) params.append('busca', busca.trim());
+      const qs = params.toString();
+      const url = qs ? `/admin/acessos?${qs}` : '/admin/acessos';
+
+      apiAdmin
+        .get(url)
+        .then((dados) => {
+          if (!cancelado) setLista(dados);
+        })
+        .catch((e) => {
+          if (!cancelado) setErro(e.message);
+        });
+    }, 300);
+
+    return () => {
+      cancelado = true;
+      clearTimeout(timer);
+    };
   }, [busca, filtroEstado]);
 
-  const filtrados = useMemo(() => {
-    if (!lista) return [];
-    const alvo = busca.trim().toLowerCase();
-    return lista.filter((p) => {
-      if (filtroEstado && p.estado !== filtroEstado) return false;
-      if (alvo) {
-        const bate =
-          p.aluno_nome?.toLowerCase().includes(alvo) ||
-          p.unidade_nome?.toLowerCase().includes(alvo) ||
-          p.codigo_referencia?.toLowerCase().includes(alvo);
-        if (!bate) return false;
-      }
-      return true;
-    });
-  }, [lista, busca, filtroEstado]);
+  // Contagens a partir de todos os acessos (carregados com filtro vazio)
+  const [todos, setTodos] = useState(null);
 
-  const totalPaginas = Math.max(1, Math.ceil((filtrados?.length || 0) / POR_PAGINA));
-  const inicio = (pagina - 1) * POR_PAGINA;
-  const fim = inicio + POR_PAGINA;
-  const paginaActual = filtrados.slice(inicio, fim);
+  useEffect(() => {
+    apiAdmin
+      .get('/admin/acessos')
+      .then(setTodos)
+      .catch(() => setTodos([]));
+  }, []);
 
-  const total = lista?.length ?? 0;
-  const aprovados = lista?.filter((p) => p.estado === 'pago').length ?? 0;
-  const pendentes = lista?.filter((p) => p.estado === 'pendente').length ?? 0;
-  const recusados = lista?.filter((p) => p.estado === 'rejeitado').length ?? 0;
+  const total = todos?.length ?? 0;
+  const aprovados = todos?.filter((p) => (p.estado_visivel || p.estado) === 'pago').length ?? 0;
+  const pendentes = todos?.filter((p) => (p.estado_visivel || p.estado) === 'pendente').length ?? 0;
+  const recusados = todos?.filter((p) => (p.estado_visivel || p.estado) === 'rejeitado').length ?? 0;
 
   return (
     <AdminLayout>
@@ -150,13 +147,13 @@ export default function AdminPagamentos() {
             </div>
           )}
 
-          {filtrados.length === 0 && lista !== null && (
+          {lista !== null && lista.length === 0 && (
             <p className="p-8 text-center text-sm text-[var(--cream-soft)]">
               Nenhum pagamento encontrado.
             </p>
           )}
 
-          {paginaActual.length > 0 && (
+          {lista !== null && lista.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-[var(--paper-soft)] text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">
@@ -169,85 +166,43 @@ export default function AdminPagamentos() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginaActual.map((p) => (
-                    <tr key={p.id} className="border-t border-black/5 transition hover:bg-black/[0.02]">
-                      <td className="whitespace-nowrap px-4 py-3 text-[var(--ink-soft)]">
-                        {formatarData(p.data_pedido)}
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${corAvatar(p.id)}`}
-                          >
-                            {iniciais(p.aluno_nome)}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-[var(--ink)]">{p.aluno_nome}</p>
-                            <p className="text-xs text-[var(--cream-soft)]">{p.aluno_whatsapp}</p>
+                  {lista.map((p) => {
+                    const estado = p.estado_visivel || p.estado;
+                    return (
+                      <tr key={p.id} className="border-t border-black/5 transition hover:bg-black/[0.02]">
+                        <td className="whitespace-nowrap px-4 py-3 text-[var(--ink-soft)]">
+                          {formatarData(p.data_pedido)}
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${corAvatar(p.id)}`}
+                            >
+                              {iniciais(p.aluno_nome)}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-[var(--ink)]">{p.aluno_nome}</p>
+                              <p className="text-xs text-[var(--cream-soft)]">{p.aluno_whatsapp}</p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <p className="font-medium text-[var(--ink)]">{p.unidade_nome}</p>
-                        {p.classe_nome && (
-                          <p className="text-xs text-[var(--cream-soft)]">{p.classe_nome}</p>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3 font-medium text-[var(--ink)]">
-                        {p.unidade_preco} MT
-                      </td>
-                      <td className="px-3 py-3">
-                        <StatusBadge estado={p.estado_visivel || p.estado} />
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-3 py-3">
+                          <p className="font-medium text-[var(--ink)]">{p.unidade_nome}</p>
+                          {p.classe_nome && (
+                            <p className="text-xs text-[var(--cream-soft)]">{p.classe_nome}</p>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3 font-medium text-[var(--ink)]">
+                          {p.unidade_preco} MT
+                        </td>
+                        <td className="px-3 py-3">
+                          <StatusBadge estado={estado} />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
-            </div>
-          )}
-
-          {/* Paginação */}
-          {filtrados.length > 0 && (
-            <div className="flex flex-col items-center justify-between gap-3 border-t border-black/5 px-5 py-4 sm:flex-row">
-              <p className="text-xs text-[var(--cream-soft)]">
-                Mostrando {inicio + 1}–{Math.min(fim, filtrados.length)} de {filtrados.length} pagamentos
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setPagina((p) => Math.max(1, p - 1))}
-                  disabled={pagina === 1}
-                  className="rounded-lg border border-black/10 px-2.5 py-1 text-sm font-semibold text-[var(--cream-soft)] transition hover:bg-black/[0.04] disabled:opacity-40"
-                >
-                  ‹
-                </button>
-                {Array.from({ length: totalPaginas }).slice(0, 5).map((_, i) => {
-                  const num = i + 1;
-                  return (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setPagina(num)}
-                      className={`min-w-[32px] rounded-lg px-2.5 py-1 text-sm font-semibold transition ${
-                        pagina === num
-                          ? 'bg-[var(--mango)] text-[var(--mango-ink)]'
-                          : 'text-[var(--cream-soft)] hover:bg-black/[0.04]'
-                      }`}
-                    >
-                      {num}
-                    </button>
-                  );
-                })}
-                {totalPaginas > 5 && <span className="px-1 text-[var(--cream-soft)]">…</span>}
-                <button
-                  type="button"
-                  onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-                  disabled={pagina === totalPaginas}
-                  className="rounded-lg border border-black/10 px-2.5 py-1 text-sm font-semibold text-[var(--cream-soft)] transition hover:bg-black/[0.04] disabled:opacity-40"
-                >
-                  ›
-                </button>
-              </div>
             </div>
           )}
         </div>

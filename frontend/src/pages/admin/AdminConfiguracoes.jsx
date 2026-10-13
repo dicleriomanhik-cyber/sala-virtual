@@ -199,7 +199,6 @@ function AbaGeral() {
           </label>
         </div>
 
-        {/* Secção: Fale connosco */}
         <div className="mt-8">
           <p className="mb-3 text-sm font-semibold text-[var(--ink)]">Fale connosco</p>
           <div className="grid gap-5 sm:grid-cols-2">
@@ -229,7 +228,6 @@ function AbaGeral() {
           </div>
         </div>
 
-        {/* Secção: Redes sociais */}
         <div className="mt-8">
           <p className="mb-3 text-sm font-semibold text-[var(--ink)]">Redes sociais</p>
           <div className="grid gap-5 sm:grid-cols-2">
@@ -261,7 +259,6 @@ function AbaGeral() {
           </div>
         </div>
 
-        {/* Logótipo actual */}
         <div className="mt-8">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">
             Logótipo Atual
@@ -524,40 +521,44 @@ function AbaConta() {
         </div>
       </form>
 
-      <aside className="rounded-2xl bg-[var(--paper)] p-6 shadow-sm md:p-8">
-        <div className="flex items-start gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--mango-soft)] text-[var(--mango)]">
-            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M12 3 4 6v5c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6l-8-3Z" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
-          <div>
-            <h3 className="font-display text-lg font-semibold text-[var(--ink)]">
-              Segurança da Conta
-            </h3>
-            <p className="mt-1 text-sm text-[var(--ink-soft)]">
-              Mantenha as suas credenciais seguras e não partilhe a sua conta com outras pessoas.
-            </p>
+      <aside className="space-y-4">
+        <div className="rounded-2xl bg-[var(--paper)] p-6 shadow-sm md:p-8">
+          <div className="flex items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--mango-soft)] text-[var(--mango)]">
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M12 3 4 6v5c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6l-8-3Z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <div>
+              <h3 className="font-display text-lg font-semibold text-[var(--ink)]">
+                Segurança da Conta
+              </h3>
+              <p className="mt-1 text-sm text-[var(--ink-soft)]">
+                Mantenha as suas credenciais seguras e não partilhe a sua conta com outras pessoas.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <CartaoSeguranca
+              titulo="Palavra-passe forte"
+              texto="Use uma combinação de letras, números e símbolos."
+              icone="lock"
+            />
+            <CartaoSeguranca
+              titulo="Acesso restrito"
+              texto="Apenas o administrador tem acesso a esta área."
+              icone="escudo"
+            />
+            <CartaoSeguranca
+              titulo="Em caso de problemas"
+              texto="Se não conseguir aceder à sua conta, contacte o suporte do sistema."
+              icone="info"
+            />
           </div>
         </div>
 
-        <div className="mt-6 space-y-4">
-          <CartaoSeguranca
-            titulo="Palavra-passe forte"
-            texto="Use uma combinação de letras, números e símbolos."
-            icone="lock"
-          />
-          <CartaoSeguranca
-            titulo="Acesso restrito"
-            texto="Apenas o administrador tem acesso a esta área."
-            icone="escudo"
-          />
-          <CartaoSeguranca
-            titulo="Em caso de problemas"
-            texto="Se não conseguir aceder à sua conta, contacte o suporte do sistema."
-            icone="info"
-          />
-        </div>
+        <CartaoChaveRecuperacao />
       </aside>
     </div>
   );
@@ -577,6 +578,119 @@ function CartaoSeguranca({ titulo, texto, icone }) {
           <p className="mt-0.5 text-xs text-[var(--ink-soft)]">{texto}</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CartaoChaveRecuperacao() {
+  const [chave, setChave] = useState(null);
+  const [temChave, setTemChave] = useState(null);
+  const [aGerar, setAGerar] = useState(false);
+  const [erro, setErro] = useState('');
+  const [copiado, setCopiado] = useState(false);
+
+  useEffect(() => {
+    apiAdmin
+      .get('/admin/me/tem-chave-recuperacao')
+      .then((r) => setTemChave(r.tem_chave))
+      .catch(() => setTemChave(null));
+  }, []);
+
+  async function gerar() {
+    if (!confirm('Isto vai invalidar a chave actual (se existir). Continuar?')) return;
+    setAGerar(true);
+    setErro('');
+    setChave(null);
+    setCopiado(false);
+    try {
+      const r = await apiAdmin.post('/admin/me/gerar-chave-recuperacao');
+      setChave(r.recovery_key);
+      setTemChave(true);
+    } catch (e) {
+      setErro(e.message);
+    } finally {
+      setAGerar(false);
+    }
+  }
+
+  async function copiar() {
+    if (!chave) return;
+    try {
+      await navigator.clipboard.writeText(chave);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      // ignora
+    }
+  }
+
+  return (
+    <div className="rounded-2xl bg-[var(--paper)] p-5 shadow-sm md:p-6">
+      <h3 className="font-display text-base font-semibold text-[var(--ink)]">
+        Chave de recuperação
+      </h3>
+      <p className="mt-1 text-xs text-[var(--ink-soft)]">
+        Se esquecer a password, esta chave permite-lhe recuperar o acesso. Guarde-a em local seguro.
+      </p>
+
+      {erro && (
+        <div className="mt-4">
+          <MensagemErro>{erro}</MensagemErro>
+        </div>
+      )}
+
+      {chave ? (
+        <div className="mt-4 rounded-xl border border-[var(--amber-soft)] bg-[var(--amber-soft)]/40 p-4">
+          <p className="text-xs font-semibold text-[#7A4B0A]">
+            Guarde esta chave agora. Não será mostrada novamente.
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <p className="flex-1 break-all font-mono-ref text-sm font-semibold text-[var(--ink)]">
+              {chave}
+            </p>
+            <button
+              type="button"
+              onClick={copiar}
+              aria-label="Copiar chave"
+              className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
+                copiado
+                  ? 'bg-[var(--teal-soft)] text-[var(--teal)]'
+                  : 'bg-[var(--mango-soft)] text-[var(--mango)] hover:brightness-95'
+              }`}
+            >
+              {copiado ? (
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="m5 12 5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <rect x="9" y="9" width="12" height="12" rx="2" />
+                  <path d="M5 15V5a2 2 0 0 1 2-2h10" strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4">
+          <p className="text-xs text-[var(--ink-soft)]">
+            {temChave === false
+              ? 'Sem chave de recuperação configurada.'
+              : 'A chave actual está definida, mas não pode ser visualizada.'}
+          </p>
+          <button
+            type="button"
+            onClick={gerar}
+            disabled={aGerar}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[var(--mango-soft)] px-3 py-2 text-xs font-semibold text-[var(--mango)] transition hover:brightness-95 disabled:opacity-60"
+          >
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {aGerar ? 'A gerar…' : temChave ? 'Gerar nova chave' : 'Gerar chave'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

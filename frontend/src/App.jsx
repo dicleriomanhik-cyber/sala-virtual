@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ConfigProvider } from './context/ConfigContext';
 import { AdminAuthProvider } from './context/AdminAuthContext';
@@ -6,11 +6,13 @@ import ScrollToTop from './components/public/ScrollToTop';
 import Home from './pages/Home';
 import Registo from './pages/Registo';
 import Login from './pages/Login';
+import RecuperarPin from './pages/RecuperarPin';
 import ClasseUnidades from './pages/ClasseUnidades';
 import UnidadeTemas from './pages/UnidadeTemas';
 import MinhasUnidades from './pages/MinhasUnidades';
 import Perfil from './pages/Perfil';
 import AdminLogin from './pages/admin/AdminLogin';
+import AdminRecuperar from './pages/admin/AdminRecuperar';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUnidades from './pages/admin/AdminUnidades';
 import AdminUnidadeDetalhe from './pages/admin/AdminUnidadeDetalhe';
@@ -19,7 +21,6 @@ import AdminPedidos from './pages/admin/AdminPedidos';
 import AdminConteudo from './pages/admin/AdminConteudo';
 import AdminAlunos from './pages/admin/AdminAlunos';
 import AdminConfiguracoes from './pages/admin/AdminConfiguracoes';
-import AdminConta from './pages/admin/AdminConta';
 import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute';
 
 export default function App() {
@@ -33,12 +34,14 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/registo" element={<Registo />} />
               <Route path="/entrar" element={<Login />} />
+              <Route path="/recuperar-pin" element={<RecuperarPin />} />
               <Route path="/classes/:classeId" element={<ClasseUnidades />} />
               <Route path="/unidades/:unidadeId" element={<UnidadeTemas />} />
               <Route path="/minhas-unidades" element={<MinhasUnidades />} />
               <Route path="/perfil" element={<Perfil />} />
 
               <Route path="/admin/entrar" element={<AdminLogin />} />
+              <Route path="/admin/recuperar" element={<AdminRecuperar />} />
               <Route
                 path="/admin/dashboard"
                 element={
@@ -103,14 +106,7 @@ export default function App() {
                   </ProtectedAdminRoute>
                 }
               />
-              <Route
-                path="/admin/conta"
-                element={
-                  <ProtectedAdminRoute>
-                    <AdminConta />
-                  </ProtectedAdminRoute>
-                }
-              />
+              <Route path="/admin/conta" element={<Navigate to="/admin/configuracoes" replace />} />
               <Route
                 path="/admin"
                 element={

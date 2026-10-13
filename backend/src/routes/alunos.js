@@ -52,13 +52,45 @@ router.post('/login', async (req, res) => {
   res.json({ token, aluno: { id: aluno.id, nome: aluno.nome, whatsapp: aluno.whatsapp } });
 });
 
+// POST /api/alunos/recuperar-pin — { whatsapp }
+// Gera novo PIN, grava hash e devolve o PIN em texto (o aluno deve guardar).
+// Tem rate limiting: máximo 3 pedidos em 15 minutos por WhatsApp.
+router.post('/recuperar-pin', async (req, res) => {
+  const { whatsapp } = req.body || {};
+  if (!whatsapp) return res.status(400).json({ erro: 'WhatsApp é obrigatório' });
+
+  const janela = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const recentes = await db.get(
+    'SELECT COUNT(*)::int AS n FROM recuperacoes_pin WHERE whatsapp = ? AND data_pedido > ?',
+    [whatsapp, janela]
+  );
+  if (recentes.n >= 3) {
+    return res.status(429).json({ erro: 'Demasiados pedidos. Tente novamente dentro de 15 minutos.' });
+  }
+
+  await db.run('INSERT INTO recuperacoes_pin (whatsapp) VALUES (?)', [whatsapp]);
+
+  const aluno = await db.get('SELECT id FROM alunos WHERE whatsapp = ?', [whatsapp]);
+
+  if (!aluno) {
+    return res.json({ ok: true, mensagem: 'Se este número estiver registado, receberá um novo PIN.' });
+  }
+
+  const novoPin = String(Math.floor(1000 + Math.random() * 9000));
+  const pinHash = hashValor(novoPin);
+
+  await db.run('UPDATE alunos SET pin_hash = ? WHERE id = ?', [pinHash, aluno.id]);
+
+  res.json({ ok: true, pin: novoPin });
+});
+
 // GET /api/alunos/me — dados do aluno autenticado
 router.get('/me', autenticarAluno, async (req, res) => {
   const aluno = await db.get('SELECT id, nome, whatsapp, data_registo FROM alunos WHERE id = ?', [req.aluno.id]);
   res.json(aluno);
 });
 
-// GET /api/alunos/me/acessos — "Minhas Unidades": tudo o que o aluno já pediu/pagou
+// GET /api/alunos/me/acessos — "Minhas Unidades"
 router.get('/me/acessos', autenticarAluno, async (req, res) => {
   const linhas = await db.all(
     `SELECT a.*, u.nome AS unidade_nome, u.preco AS unidade_preco, c.nome AS classe_nome
@@ -86,7 +118,7 @@ router.get('/me/acessos', autenticarAluno, async (req, res) => {
   res.json(resultado);
 });
 
-// POST /api/alunos/me/acessos — { unidade_id } — pede acesso a uma unidade (cria estado 'pendente')
+// POST /api/alunos/me/acessos — { unidade_id }
 router.post('/me/acessos', autenticarAluno, async (req, res) => {
   const { unidade_id } = req.body || {};
   if (!unidade_id) return res.status(400).json({ erro: 'unidade_id é obrigatório' });
@@ -94,7 +126,6 @@ router.post('/me/acessos', autenticarAluno, async (req, res) => {
   const unidade = await db.get('SELECT * FROM unidades WHERE id = ? AND ativo = 1', [unidade_id]);
   if (!unidade) return res.status(404).json({ erro: 'Unidade não encontrada ou inativa' });
 
-  // Se já existe um acesso pago e ainda ativo, não faz sentido criar outro pedido
   const acessoExistente = await db.get(
     'SELECT * FROM acessos WHERE aluno_id = ? AND unidade_id = ? ORDER BY id DESC LIMIT 1',
     [req.aluno.id, unidade_id]
@@ -108,7 +139,6 @@ router.post('/me/acessos', autenticarAluno, async (req, res) => {
   }
 
   let codigo;
-  // Garante unicidade do código de referência (colisão é extremamente rara, mas verificamos)
   do {
     codigo = gerarCodigoReferencia();
   } while (await db.get('SELECT id FROM acessos WHERE codigo_referencia = ?', [codigo]));

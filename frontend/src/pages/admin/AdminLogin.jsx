@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import Campo from '../../components/Campo';
 import MensagemErro from '../../components/MensagemErro';
 import { useAdminAuth } from '../../context/AdminAuthContext';
@@ -33,13 +33,11 @@ export default function AdminLogin() {
       <main className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-4xl overflow-hidden rounded-3xl bg-[var(--paper)] shadow-lg">
           <div className="relative grid md:grid-cols-2">
-            {/* Imagem de fundo em mobile */}
             <div
               aria-hidden="true"
               className="absolute inset-0 bg-[url('/images/login-lateral.png')] bg-cover bg-center opacity-15 md:hidden"
             />
 
-            {/* Formulário */}
             <div className="relative z-10 p-6 md:p-10 lg:p-12">
               <div className="mb-6 flex flex-col items-start gap-2">
                 <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--mango)] font-display text-base font-bold text-[var(--mango-ink)]">
@@ -85,9 +83,17 @@ export default function AdminLogin() {
                   {aEnviar ? 'A entrar…' : 'Entrar'}
                 </button>
               </form>
+
+              <p className="mt-4 text-center text-sm">
+                <Link
+                  to="/admin/recuperar"
+                  className="font-medium text-[var(--mango)] hover:underline"
+                >
+                  Esqueceu a password?
+                </Link>
+              </p>
             </div>
 
-            {/* Imagem lateral em desktop */}
             <div className="relative hidden md:block">
               <img
                 src="/images/login-lateral.png"
