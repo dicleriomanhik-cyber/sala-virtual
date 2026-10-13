@@ -9,31 +9,24 @@ if (!connectionString) {
 
 const pool = new Pool({
   connectionString,
-  // Necessário para ligar ao Supabase/Neon a partir do Render
   ssl: { rejectUnauthorized: false },
 });
 
-// Converte placeholders no estilo sqlite ('?') para o estilo Postgres ('$1', '$2'...)
 function toPg(sql) {
   let i = 0;
   return sql.replace(/\?/g, () => `$${++i}`);
 }
 
-// Equivalente a db.prepare(sql).all(...params) do better-sqlite3
 async function all(sql, params = []) {
   const res = await pool.query(toPg(sql), params);
   return res.rows;
 }
 
-// Equivalente a db.prepare(sql).get(...params) do better-sqlite3
 async function get(sql, params = []) {
   const rows = await all(sql, params);
   return rows[0];
 }
 
-// Equivalente a db.prepare(sql).run(...params) do better-sqlite3.
-// Para INSERTs onde precisas do id gerado, acrescenta "RETURNING id" ao SQL
-// e lê o resultado em `info.id` (equivalente ao antigo `info.lastInsertRowid`).
 async function run(sql, params = []) {
   const res = await pool.query(toPg(sql), params);
   return {
@@ -42,8 +35,6 @@ async function run(sql, params = []) {
   };
 }
 
-// Executa uma função dentro de uma transação Postgres.
-// Dentro de `fn`, usa client.query(sql, [valores]) com placeholders $1, $2...
 async function transaction(fn) {
   const client = await pool.connect();
   try {
@@ -117,12 +108,23 @@ async function migrate() {
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL
     );
+
+    ALTER TABLE configuracao
+      ADD COLUMN IF NOT EXISTS email TEXT,
+      ADD COLUMN IF NOT EXISTS morada TEXT,
+      ADD COLUMN IF NOT EXISTS horario TEXT,
+      ADD COLUMN IF NOT EXISTS youtube_url TEXT,
+      ADD COLUMN IF NOT EXISTS facebook_url TEXT;
+
+    ALTER TABLE unidades
+      ADD COLUMN IF NOT EXISTS descricao TEXT,
+      ADD COLUMN IF NOT EXISTS pdf_url TEXT;
+
+    ALTER TABLE temas
+      ADD COLUMN IF NOT EXISTS descricao TEXT,
+      ADD COLUMN IF NOT EXISTS miniatura_url TEXT;
   `);
 
-  // Migração incremental: adiciona a coluna do PDF da unidade se ainda não existir
-  await pool.query(`ALTER TABLE unidades ADD COLUMN IF NOT EXISTS pdf_url TEXT;`);
-
-  // Garante que existe sempre uma linha de configuração (id fixo = 1)
   const cfg = await get('SELECT id FROM configuracao WHERE id = 1');
   if (!cfg) {
     await run(

@@ -78,7 +78,7 @@ body {
   border-radius: 0.75rem;
   padding: 0.75rem 1rem;
   font-size: 0.9375rem;
-  border: 1px solid transparent;
+  border: 1px solid rgba(11, 42, 91, 0.35);
 }
 .campo::placeholder { color: var(--ink-soft); }
-.campo:focus { border-color: var(--mango); outline: none; }
+.campo:focus { border-color: #0B2A5B; outline: none; }

@@ -1,19 +1,31 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
-import Layout from '../components/Layout';
+import PublicLayout from '../components/public/PublicLayout';
+import BannerClasse from '../components/public/BannerClasse';
+import CartaoTema from '../components/public/CartaoTema';
 import Botao from '../components/Botao';
 import TicketCard from '../components/TicketCard';
 import { useAuth } from '../context/AuthContext';
 import { useConfig } from '../context/ConfigContext';
 import { linkWhatsapp } from '../utils/whatsapp';
 
+const IMAGEM_BANNER = '/images/banner-9.png';
+
+function imagemLateralClasse(nome) {
+  if (!nome) return null;
+  if (nome.includes('9ª') || nome.includes('9.ª')) return '/images/lateral-9.png';
+  if (nome.includes('12ª') || nome.includes('12.ª')) return '/images/lateral-12.png';
+  return null;
+}
+
 export default function UnidadeTemas() {
   const { unidadeId } = useParams();
   const [dados, setDados] = useState(null);
-  const [meuAcesso, setMeuAcesso] = useState(undefined); // undefined = ainda a carregar, null = nunca pedido
+  const [meuAcesso, setMeuAcesso] = useState(undefined);
+  const [classeNome, setClasseNome] = useState('');
   const [erro, setErro] = useState('');
-  const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false); // "Pedir acesso" clicado, ainda não pagou
+  const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
   const [aProcessar, setAProcessar] = useState(false);
   const { aluno } = useAuth();
   const config = useConfig();
@@ -24,6 +36,23 @@ export default function UnidadeTemas() {
       .get(`/unidades/${unidadeId}/temas`)
       .then(setDados)
       .catch(() => setErro('Não foi possível carregar esta unidade.'));
+
+    api
+      .get('/classes')
+      .then(async (classes) => {
+        for (const c of classes) {
+          try {
+            const unidades = await api.get(`/classes/${c.id}/unidades`);
+            if (unidades.some((u) => String(u.id) === String(unidadeId))) {
+              setClasseNome(c.nome);
+              break;
+            }
+          } catch {
+            // ignora e continua
+          }
+        }
+      })
+      .catch(() => {});
 
     if (aluno) {
       api
@@ -42,15 +71,11 @@ export default function UnidadeTemas() {
     carregar();
   }, [carregar]);
 
-  // Passo 1: só mostra a confirmação localmente. Não contacta o backend
-  // e, portanto, nenhum pedido chega ainda ao painel do admin.
   function pedirAcesso() {
     setErro('');
     setMostrarConfirmacao(true);
   }
 
-  // Passo 2: só aqui o pedido é de facto criado no backend (fica visível
-  // para o admin) e o WhatsApp é aberto, no mesmo clique em "Pagar".
   async function confirmarPagamento() {
     setAProcessar(true);
     setErro('');
@@ -68,8 +93,6 @@ export default function UnidadeTemas() {
     }
   }
 
-  // Reabrir o WhatsApp a partir do bilhete, para um pedido que já existe
-  // (ex.: o aluno fechou a conversa sem enviar e quer tentar de novo).
   function abrirWhatsapp() {
     const link = linkWhatsapp({
       whatsappAdmin: config?.whatsapp_admin,
@@ -81,32 +104,46 @@ export default function UnidadeTemas() {
   }
 
   const podePedir = meuAcesso === null || (meuAcesso && ['expirado', 'rejeitado'].includes(meuAcesso.estado));
+  const imagemLateral = imagemLateralClasse(classeNome);
 
   return (
-    <Layout>
-      <button onClick={() => navigate(-1)} className="mb-3 text-sm font-medium text-[var(--mango)]">
-        ← Voltar
+    <PublicLayout>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="mb-4 inline-flex items-center text-sm font-medium text-[var(--mango)] transition hover:underline"
+      >
+        Voltar
       </button>
 
-      {erro && <p className="mb-4 text-sm" style={{ color: 'var(--brick)' }}>{erro}</p>}
+      {erro && (
+        <p className="mb-4 text-sm" style={{ color: 'var(--brick)' }} role="alert">
+          {erro}
+        </p>
+      )}
 
       {!dados && !erro && (
         <div className="animate-pulse space-y-3">
-          <div className="h-6 w-2/3 rounded bg-black/[0.04]" />
+          <div className="h-40 rounded-3xl bg-black/[0.04]" />
           <div className="h-16 rounded-2xl bg-black/[0.04]" />
         </div>
       )}
 
       {dados && (
         <>
-          <h1 className="font-display text-2xl font-semibold text-[var(--cream)]">{dados.unidade.nome}</h1>
-          <p className="mt-1 text-sm text-[var(--cream-soft)]">
+          <p className="mb-4 text-sm text-[var(--cream-soft)] lg:text-base">
             {dados.temas.length} tema{dados.temas.length === 1 ? '' : 's'} · {dados.unidade.preco} MT
           </p>
 
-          {/* Bilhete de acesso: aparece quando já há um pedido em curso, expirado ou rejeitado */}
+          <BannerClasse
+            selo="Unidade de Estudo"
+            titulo={dados.unidade.nome}
+            descricao="Consulta os temas desta unidade e os respectivos vídeos."
+            imagem={IMAGEM_BANNER}
+          />
+
           {meuAcesso && (
-            <div className="mt-5">
+            <div className="mt-8">
               <TicketCard acesso={meuAcesso} acaoWhatsapp={abrirWhatsapp} />
               {meuAcesso.estado === 'rejeitado' && (
                 <p className="mt-2 text-xs text-[var(--cream-soft)]">
@@ -116,97 +153,72 @@ export default function UnidadeTemas() {
             </div>
           )}
 
-          {!dados.tem_acesso && (
-            <div className="mt-5 space-y-2 rounded-2xl bg-[var(--bg-soft)] p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">Temas</p>
-              <ul className="space-y-2">
-                {dados.temas.map((t) => (
-                  <li key={t.id} className="flex items-center gap-2 text-sm text-[var(--cream)]">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-[var(--cream-soft)]" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="4.5" y="10" width="15" height="10" rx="2" />
-                      <path d="M8 10V7a4 4 0 0 1 8 0v3" strokeLinecap="round" />
-                    </svg>
-                    {t.nome}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <section className="mt-10 lg:mt-12">
+            <h2 className="font-display text-2xl font-semibold text-[var(--cream)] lg:text-3xl">
+              Temas desta unidade
+            </h2>
 
-          {dados.tem_acesso && (
-            <div className="mt-5 space-y-2">
-              {dados.temas.map((t) => (
-                <a
-                  key={t.id}
-                  href={t.link_youtube}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-3 rounded-xl bg-[var(--bg-soft)] p-3.5 transition hover:bg-black/[0.04]"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--mango)]">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-[var(--mango-ink)]">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </span>
-                  <span className="text-sm font-medium text-[var(--cream)]">{t.nome}</span>
-                </a>
-              ))}
+            <div className="mt-5 grid gap-8 lg:mt-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
+              <div className="overflow-hidden rounded-2xl bg-[var(--paper)] p-5 shadow-sm lg:p-6">
+                <div className="space-y-2">
+                  {dados.temas.map((t, i) => (
+                    <CartaoTema
+                      key={t.id}
+                      tema={t}
+                      index={i + 1}
+                      temAcesso={dados.tem_acesso}
+                    />
+                  ))}
+                </div>
 
-              {dados.unidade.pdf_url && (
-                <a
-                  href={dados.unidade.pdf_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  download
-                  className="flex items-center gap-3 rounded-xl bg-[var(--mango-soft)] p-3.5 transition hover:brightness-95"
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--mango)]">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 stroke-[var(--mango-ink)]" fill="none" strokeWidth="2">
-                      <path d="M12 4v11" strokeLinecap="round" />
-                      <path d="M7.5 11.5 12 16l4.5-4.5" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M5 19.5h14" strokeLinecap="round" />
-                    </svg>
-                  </span>
-                  <span className="text-sm font-semibold text-[var(--mango)]">Baixar PDF da unidade</span>
-                </a>
+                {podePedir && !mostrarConfirmacao && (
+                  <div className="mt-6">
+                    {!aluno ? (
+                      <Botao onClick={() => navigate('/entrar', { state: { depoisDe: `/unidades/${unidadeId}` } })}>
+                        Entrar para pedir acesso
+                      </Botao>
+                    ) : (
+                      <Botao onClick={pedirAcesso}>Pedir acesso — {dados.unidade.preco} MT</Botao>
+                    )}
+                  </div>
+                )}
+
+                {podePedir && mostrarConfirmacao && (
+                  <div className="mt-6 space-y-3 rounded-2xl bg-[var(--bg-soft)] p-4">
+                    <p className="text-sm text-[var(--ink)]">
+                      Vai pagar <strong>{dados.unidade.preco} MT</strong> por "{dados.unidade.nome}". Ao clicar em
+                      "Pagar", o WhatsApp abre com uma mensagem pronta para enviar ao professor com o código do seu pedido.
+                    </p>
+                    <Botao onClick={confirmarPagamento} disabled={aProcessar}>
+                      {aProcessar ? 'A preparar…' : `Pagar — ${dados.unidade.preco} MT`}
+                    </Botao>
+                    <button
+                      onClick={() => setMostrarConfirmacao(false)}
+                      disabled={aProcessar}
+                      className="w-full text-center text-sm font-medium text-[var(--cream-soft)]"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {imagemLateral && (
+                <aside className="hidden lg:block">
+                  <div className="sticky top-24 h-full min-h-[400px] overflow-hidden rounded-2xl shadow-sm">
+                    <img
+                      src={imagemLateral}
+                      alt=""
+                      className="h-full w-full object-cover object-center"
+                      loading="lazy"
+                    />
+                  </div>
+                </aside>
               )}
             </div>
-          )}
-
-          {podePedir && !mostrarConfirmacao && (
-            <div className="mt-6">
-              {!aluno ? (
-                <Botao onClick={() => navigate('/entrar', { state: { depoisDe: `/unidades/${unidadeId}` } })}>
-                  Entrar para pedir acesso
-                </Botao>
-              ) : (
-                <Botao onClick={pedirAcesso}>Pedir acesso — {dados.unidade.preco} MT</Botao>
-              )}
-            </div>
-          )}
-
-          {/* Confirmação: nada foi enviado ao admin ainda. Só ao clicar em
-              "Pagar" é que o pedido é criado e passa a aparecer no painel. */}
-          {podePedir && mostrarConfirmacao && (
-            <div className="mt-6 space-y-3 rounded-2xl bg-[var(--bg-soft)] p-4">
-              <p className="text-sm text-[var(--cream)]">
-                Vai pagar <strong>{dados.unidade.preco} MT</strong> por "{dados.unidade.nome}". Ao clicar em
-                "Pagar", o WhatsApp abre com uma mensagem pronta para enviar ao professor com o código do seu pedido.
-              </p>
-              <Botao onClick={confirmarPagamento} disabled={aProcessar}>
-                {aProcessar ? 'A preparar…' : `Pagar — ${dados.unidade.preco} MT`}
-              </Botao>
-              <button
-                onClick={() => setMostrarConfirmacao(false)}
-                disabled={aProcessar}
-                className="w-full text-center text-sm font-medium text-[var(--cream-soft)]"
-              >
-                Cancelar
-              </button>
-            </div>
-          )}
+          </section>
         </>
       )}
-    </Layout>
+    </PublicLayout>
   );
 }

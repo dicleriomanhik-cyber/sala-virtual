@@ -8,7 +8,6 @@ const router = express.Router();
 
 // ---------- Login ----------
 
-// POST /api/admin/login — { username, password }
 router.post('/login', async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ erro: 'username e password são obrigatórios' });
@@ -25,7 +24,14 @@ router.post('/login', async (req, res) => {
 // A partir daqui, todas as rotas exigem admin autenticado
 router.use(autenticarAdmin);
 
-// PUT /api/admin/me — trocar username e/ou password do admin autenticado
+// GET /api/admin/me
+router.get('/me', async (req, res) => {
+  const admin = await db.get('SELECT id, username FROM admins WHERE id = ?', [req.admin.id]);
+  if (!admin) return res.status(404).json({ erro: 'Admin não encontrado' });
+  res.json(admin);
+});
+
+// PUT /api/admin/me
 router.put('/me', async (req, res) => {
   const { passwordAtual, novoUsername, novaPassword } = req.body || {};
   if (!passwordAtual) {
@@ -57,6 +63,63 @@ router.put('/me', async (req, res) => {
   res.json({ ok: true, admin: { id: admin.id, username: usernameFinal } });
 });
 
+// ---------- Dashboard ----------
+
+// GET /api/admin/dashboard/stats — agrega tudo num só pedido
+router.get('/dashboard/stats', async (req, res) => {
+  const [alunos, classes, acessos] = await Promise.all([
+    db.all('SELECT id FROM alunos'),
+    db.all('SELECT id, nome, video_gratuito_url FROM classes ORDER BY id'),
+    db.all('SELECT id, estado FROM acessos'),
+  ]);
+
+  const porClasse = await Promise.all(
+    classes.map(async (c) => {
+      const r = await db.get('SELECT COUNT(*)::int AS n FROM unidades WHERE classe_id = ?', [c.id]);
+      return { id: c.id, nome: c.nome, unidades: r.n };
+    })
+  );
+
+  const totalUnidades = porClasse.reduce((soma, c) => soma + c.unidades, 0);
+  const totalAulasGratuitas = classes.filter((c) => c.video_gratuito_url).length;
+  const totalPagamentos = acessos.filter((a) => a.estado === 'pago').length;
+  const pedidosPendentes = acessos.filter((a) => a.estado === 'pendente').length;
+
+  res.json({
+    total_alunos: alunos.length,
+    total_unidades: totalUnidades,
+    total_aulas_gratuitas: totalAulasGratuitas,
+    total_pagamentos: totalPagamentos,
+    pedidos_pendentes: pedidosPendentes,
+    por_classe: porClasse,
+  });
+});
+
+// GET /api/admin/dashboard/atividade — últimos pedidos
+router.get('/dashboard/atividade', async (req, res) => {
+  const linhas = await db.all(
+    `SELECT a.id, a.estado, a.data_pedido,
+            al.nome AS aluno_nome,
+            u.nome AS unidade_nome
+     FROM acessos a
+     JOIN alunos al ON al.id = a.aluno_id
+     JOIN unidades u ON u.id = a.unidade_id
+     ORDER BY a.data_pedido DESC
+     LIMIT 10`
+  );
+
+  const resultado = linhas.map((l) => ({
+    id: l.id,
+    tipo: 'pedido',
+    aluno_nome: l.aluno_nome,
+    unidade_nome: l.unidade_nome,
+    estado: estadoVisivel(l),
+    data: l.data_pedido,
+  }));
+
+  res.json(resultado);
+});
+
 // ---------- Classes (CRUD) ----------
 
 router.get('/classes', async (req, res) => {
@@ -76,8 +139,6 @@ router.put('/classes/:id', async (req, res) => {
   if (!existente) return res.status(404).json({ erro: 'Classe não encontrada' });
   await db.run('UPDATE classes SET nome = ?, video_gratuito_url = ? WHERE id = ?', [
     nome ?? existente.nome,
-    // Usa "!== undefined" (em vez de "??") para que enviar null/"" limpe mesmo o link —
-    // com "??", null era tratado como "não enviado" e o link antigo nunca era apagado.
     video_gratuito_url !== undefined ? video_gratuito_url : existente.video_gratuito_url,
     req.params.id,
   ]);
@@ -89,7 +150,7 @@ router.delete('/classes/:id', async (req, res) => {
   res.status(204).end();
 });
 
-// ---------- Unidades (CRUD + reordenar + ativar/desativar) ----------
+// ---------- Unidades ----------
 
 router.get('/unidades', async (req, res) => {
   const { classe_id } = req.query;
@@ -100,11 +161,11 @@ router.get('/unidades', async (req, res) => {
 });
 
 router.post('/unidades', async (req, res) => {
-  const { classe_id, nome, ordem, preco, ativo, pdf_url } = req.body || {};
+  const { classe_id, nome, ordem, preco, ativo, descricao, pdf_url } = req.body || {};
   if (!classe_id || !nome) return res.status(400).json({ erro: 'classe_id e nome são obrigatórios' });
   const info = await db.run(
-    'INSERT INTO unidades (classe_id, nome, ordem, preco, ativo, pdf_url) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
-    [classe_id, nome, ordem ?? 0, preco ?? 0, ativo === false ? 0 : 1, pdf_url || null]
+    'INSERT INTO unidades (classe_id, nome, ordem, preco, ativo, descricao, pdf_url) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
+    [classe_id, nome, ordem ?? 0, preco ?? 0, ativo === false ? 0 : 1, descricao || null, pdf_url || null]
   );
   res.status(201).json(await db.get('SELECT * FROM unidades WHERE id = ?', [info.id]));
 });
@@ -112,17 +173,20 @@ router.post('/unidades', async (req, res) => {
 router.put('/unidades/:id', async (req, res) => {
   const existente = await db.get('SELECT * FROM unidades WHERE id = ?', [req.params.id]);
   if (!existente) return res.status(404).json({ erro: 'Unidade não encontrada' });
-  const { nome, ordem, preco, ativo, classe_id, pdf_url } = req.body || {};
-  await db.run('UPDATE unidades SET classe_id = ?, nome = ?, ordem = ?, preco = ?, ativo = ?, pdf_url = ? WHERE id = ?', [
-    classe_id ?? existente.classe_id,
-    nome ?? existente.nome,
-    ordem ?? existente.ordem,
-    preco ?? existente.preco,
-    ativo === undefined ? existente.ativo : (ativo ? 1 : 0),
-    // "!== undefined" (não "??") para que apagar o PDF (enviar null) seja mesmo gravado
-    pdf_url !== undefined ? pdf_url : existente.pdf_url,
-    req.params.id,
-  ]);
+  const { nome, ordem, preco, ativo, classe_id, descricao, pdf_url } = req.body || {};
+  await db.run(
+    'UPDATE unidades SET classe_id = ?, nome = ?, ordem = ?, preco = ?, ativo = ?, descricao = ?, pdf_url = ? WHERE id = ?',
+    [
+      classe_id ?? existente.classe_id,
+      nome ?? existente.nome,
+      ordem ?? existente.ordem,
+      preco ?? existente.preco,
+      ativo === undefined ? existente.ativo : (ativo ? 1 : 0),
+      descricao !== undefined ? descricao : existente.descricao,
+      pdf_url !== undefined ? pdf_url : existente.pdf_url,
+      req.params.id,
+    ]
+  );
   res.json(await db.get('SELECT * FROM unidades WHERE id = ?', [req.params.id]));
 });
 
@@ -131,7 +195,6 @@ router.delete('/unidades/:id', async (req, res) => {
   res.status(204).end();
 });
 
-// POST /api/admin/unidades/reordenar — { ids: [3, 1, 2] } define a nova ordem (índice na lista = campo ordem)
 router.post('/unidades/reordenar', async (req, res) => {
   const { ids } = req.body || {};
   if (!Array.isArray(ids)) return res.status(400).json({ erro: 'ids deve ser um array' });
@@ -143,7 +206,7 @@ router.post('/unidades/reordenar', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------- Temas (CRUD + reordenar) ----------
+// ---------- Temas ----------
 
 router.get('/temas', async (req, res) => {
   const { unidade_id } = req.query;
@@ -154,11 +217,11 @@ router.get('/temas', async (req, res) => {
 });
 
 router.post('/temas', async (req, res) => {
-  const { unidade_id, nome, ordem, link_youtube, ativo } = req.body || {};
+  const { unidade_id, nome, ordem, link_youtube, ativo, descricao, miniatura_url } = req.body || {};
   if (!unidade_id || !nome) return res.status(400).json({ erro: 'unidade_id e nome são obrigatórios' });
   const info = await db.run(
-    'INSERT INTO temas (unidade_id, nome, ordem, link_youtube, ativo) VALUES (?, ?, ?, ?, ?) RETURNING id',
-    [unidade_id, nome, ordem ?? 0, link_youtube || null, ativo === false ? 0 : 1]
+    'INSERT INTO temas (unidade_id, nome, ordem, link_youtube, ativo, descricao, miniatura_url) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
+    [unidade_id, nome, ordem ?? 0, link_youtube || null, ativo === false ? 0 : 1, descricao || null, miniatura_url || null]
   );
   res.status(201).json(await db.get('SELECT * FROM temas WHERE id = ?', [info.id]));
 });
@@ -166,15 +229,20 @@ router.post('/temas', async (req, res) => {
 router.put('/temas/:id', async (req, res) => {
   const existente = await db.get('SELECT * FROM temas WHERE id = ?', [req.params.id]);
   if (!existente) return res.status(404).json({ erro: 'Tema não encontrado' });
-  const { nome, ordem, link_youtube, ativo, unidade_id } = req.body || {};
-  await db.run('UPDATE temas SET unidade_id = ?, nome = ?, ordem = ?, link_youtube = ?, ativo = ? WHERE id = ?', [
-    unidade_id ?? existente.unidade_id,
-    nome ?? existente.nome,
-    ordem ?? existente.ordem,
-    link_youtube !== undefined ? link_youtube : existente.link_youtube,
-    ativo === undefined ? existente.ativo : (ativo ? 1 : 0),
-    req.params.id,
-  ]);
+  const { nome, ordem, link_youtube, ativo, unidade_id, descricao, miniatura_url } = req.body || {};
+  await db.run(
+    'UPDATE temas SET unidade_id = ?, nome = ?, ordem = ?, link_youtube = ?, ativo = ?, descricao = ?, miniatura_url = ? WHERE id = ?',
+    [
+      unidade_id ?? existente.unidade_id,
+      nome ?? existente.nome,
+      ordem ?? existente.ordem,
+      link_youtube !== undefined ? link_youtube : existente.link_youtube,
+      ativo === undefined ? existente.ativo : (ativo ? 1 : 0),
+      descricao !== undefined ? descricao : existente.descricao,
+      miniatura_url !== undefined ? miniatura_url : existente.miniatura_url,
+      req.params.id,
+    ]
+  );
   res.json(await db.get('SELECT * FROM temas WHERE id = ?', [req.params.id]));
 });
 
@@ -194,9 +262,8 @@ router.post('/temas/reordenar', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------- Acessos (pedidos) ----------
+// ---------- Acessos ----------
 
-// GET /api/admin/acessos?estado=pendente|pago|expirado|rejeitado
 router.get('/acessos', async (req, res) => {
   const linhas = await db.all(
     `SELECT a.*, al.nome AS aluno_nome, al.whatsapp AS aluno_whatsapp, u.nome AS unidade_nome, u.preco AS unidade_preco
@@ -216,7 +283,6 @@ router.get('/acessos', async (req, res) => {
   res.json(resultado);
 });
 
-// POST /api/admin/acessos/:id/confirmar — muda para 'pago' e calcula data_expiracao
 router.post('/acessos/:id/confirmar', async (req, res) => {
   const acesso = await db.get('SELECT * FROM acessos WHERE id = ?', [req.params.id]);
   if (!acesso) return res.status(404).json({ erro: 'Pedido não encontrado' });
@@ -237,7 +303,6 @@ router.post('/acessos/:id/confirmar', async (req, res) => {
   res.json(await db.get('SELECT * FROM acessos WHERE id = ?', [req.params.id]));
 });
 
-// POST /api/admin/acessos/:id/rejeitar
 router.post('/acessos/:id/rejeitar', async (req, res) => {
   const acesso = await db.get('SELECT * FROM acessos WHERE id = ?', [req.params.id]);
   if (!acesso) return res.status(404).json({ erro: 'Pedido não encontrado' });
@@ -248,15 +313,7 @@ router.post('/acessos/:id/rejeitar', async (req, res) => {
   res.json(await db.get('SELECT * FROM acessos WHERE id = ?', [req.params.id]));
 });
 
-// DELETE /api/admin/acessos/:id — apaga permanentemente um pedido de acesso
-router.delete('/acessos/:id', async (req, res) => {
-  const existente = await db.get('SELECT id FROM acessos WHERE id = ?', [req.params.id]);
-  if (!existente) return res.status(404).json({ erro: 'Pedido não encontrado' });
-  await db.run('DELETE FROM acessos WHERE id = ?', [req.params.id]);
-  res.status(204).end();
-});
-
-// ---------- Alunos (lista + histórico) ----------
+// ---------- Alunos ----------
 
 router.get('/alunos', async (req, res) => {
   const alunos = await db.all('SELECT id, nome, whatsapp, data_registo FROM alunos ORDER BY data_registo DESC');
@@ -276,7 +333,6 @@ router.get('/alunos', async (req, res) => {
   res.json(resultado);
 });
 
-// DELETE /api/admin/alunos/:id — remove o aluno e (por ON DELETE CASCADE) os seus acessos/pedidos
 router.delete('/alunos/:id', async (req, res) => {
   const existente = await db.get('SELECT id FROM alunos WHERE id = ?', [req.params.id]);
   if (!existente) return res.status(404).json({ erro: 'Aluno não encontrado' });
@@ -292,16 +348,43 @@ router.get('/config', async (req, res) => {
 
 router.put('/config', async (req, res) => {
   const existente = await db.get('SELECT * FROM configuracao WHERE id = 1');
-  const { nome_escola, logo_url, whatsapp_admin, duracao_acesso_dias } = req.body || {};
+  const {
+    nome_escola,
+    logo_url,
+    whatsapp_admin,
+    duracao_acesso_dias,
+    email,
+    morada,
+    horario,
+    youtube_url,
+    facebook_url,
+  } = req.body || {};
+
   await db.run(
-    'UPDATE configuracao SET nome_escola = ?, logo_url = ?, whatsapp_admin = ?, duracao_acesso_dias = ? WHERE id = 1',
+    `UPDATE configuracao SET
+       nome_escola = ?,
+       logo_url = ?,
+       whatsapp_admin = ?,
+       duracao_acesso_dias = ?,
+       email = ?,
+       morada = ?,
+       horario = ?,
+       youtube_url = ?,
+       facebook_url = ?
+     WHERE id = 1`,
     [
       nome_escola ?? existente.nome_escola,
-      logo_url ?? existente.logo_url,
+      logo_url !== undefined ? logo_url : existente.logo_url,
       whatsapp_admin ?? existente.whatsapp_admin,
       duracao_acesso_dias ?? existente.duracao_acesso_dias,
+      email !== undefined ? email : existente.email,
+      morada !== undefined ? morada : existente.morada,
+      horario !== undefined ? horario : existente.horario,
+      youtube_url !== undefined ? youtube_url : existente.youtube_url,
+      facebook_url !== undefined ? facebook_url : existente.facebook_url,
     ]
   );
+
   res.json(await db.get('SELECT * FROM configuracao WHERE id = 1'));
 });
 

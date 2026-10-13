@@ -1,21 +1,63 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiAdmin } from '../../api/client';
 import AdminLayout from '../../components/admin/AdminLayout';
 import StatusBadge from '../../components/StatusBadge';
 import MensagemErro from '../../components/MensagemErro';
 import Modal from '../../components/admin/Modal';
 
+const POR_PAGINA = 8;
+
 function formatarData(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('pt-MZ', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('pt-MZ', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function iniciais(nome) {
+  if (!nome) return '?';
+  const partes = nome.trim().split(/\s+/);
+  const a = partes[0]?.[0] || '';
+  const b = partes[1]?.[0] || '';
+  return (a + b).toUpperCase();
+}
+
+const CORES_AVATAR = [
+  'bg-[var(--mango)] text-white',
+  'bg-[var(--teal)] text-white',
+  'bg-[var(--brick)] text-white',
+  'bg-[#6D28D9] text-white',
+  'bg-[#0369A1] text-white',
+];
+
+function corAvatar(id) {
+  return CORES_AVATAR[Number(id) % CORES_AVATAR.length];
+}
+
+function classesDoAluno(aluno) {
+  if (!aluno.historico || aluno.historico.length === 0) return [];
+  const nomes = aluno.historico.map((a) => a.unidade_nome || '');
+  const set = new Set();
+  nomes.forEach((n) => {
+    if (/12/.test(n) || /ondas|nuclear|termodinâmica|mecânica/i.test(n)) set.add('12');
+    if (/9/.test(n) || /óptica|estática|oscilações|electricidade/i.test(n)) set.add('9');
+  });
+  return [...set];
 }
 
 export default function AdminAlunos() {
   const [lista, setLista] = useState(null);
   const [erro, setErro] = useState('');
-  const [aberto, setAberto] = useState(null);
   const [busca, setBusca] = useState('');
-  const [apagar, setApagar] = useState(null); // { id, nome }
+  const [filtroClasse, setFiltroClasse] = useState('todas');
+  const [filtroEstado, setFiltroEstado] = useState('todos');
+  const [pagina, setPagina] = useState(1);
+  const [apagar, setApagar] = useState(null);
   const [aApagar, setAApagar] = useState(false);
 
   useEffect(() => {
@@ -24,6 +66,41 @@ export default function AdminAlunos() {
       .then(setLista)
       .catch((e) => setErro(e.message));
   }, []);
+
+  useEffect(() => {
+    setPagina(1);
+  }, [busca, filtroClasse, filtroEstado]);
+
+  const filtrados = useMemo(() => {
+    if (!lista) return [];
+    const alvo = busca.trim().toLowerCase();
+    return lista.filter((a) => {
+      if (alvo) {
+        const bate =
+          a.nome?.toLowerCase().includes(alvo) ||
+          a.whatsapp?.includes(alvo);
+        if (!bate) return false;
+      }
+      if (filtroClasse !== 'todas') {
+        const classes = classesDoAluno(a);
+        if (!classes.includes(filtroClasse)) return false;
+      }
+      if (filtroEstado !== 'todos') {
+        const estado = a.estado || 'activo';
+        if (estado !== filtroEstado) return false;
+      }
+      return true;
+    });
+  }, [lista, busca, filtroClasse, filtroEstado]);
+
+  const totalPaginas = Math.max(1, Math.ceil((filtrados?.length || 0) / POR_PAGINA));
+  const inicio = (pagina - 1) * POR_PAGINA;
+  const fim = inicio + POR_PAGINA;
+  const paginaActual = filtrados.slice(inicio, fim);
+
+  const totalAlunos = lista?.length ?? 0;
+  const ativos = lista?.filter((a) => (a.estado || 'activo') === 'activo').length ?? 0;
+  const pendentes = lista?.filter((a) => a.estado === 'pendente').length ?? 0;
 
   async function confirmarApagar() {
     setAApagar(true);
@@ -39,91 +116,278 @@ export default function AdminAlunos() {
     }
   }
 
-  const filtrados = lista?.filter((a) => {
-    const alvo = busca.trim().toLowerCase();
-    if (!alvo) return true;
-    return a.nome.toLowerCase().includes(alvo) || a.whatsapp.includes(alvo);
-  });
-
   return (
     <AdminLayout>
-      <h1 className="font-display text-2xl font-semibold text-[var(--cream)]">Alunos</h1>
-      <p className="mt-1 text-sm text-[var(--cream-soft)]">Registados e o histórico de unidades pedidas.</p>
-
-      <input
-        value={busca}
-        onChange={(e) => setBusca(e.target.value)}
-        placeholder="Procurar por nome ou WhatsApp…"
-        className="campo mt-4"
-      />
-
-      <div className="mt-3">
-        <MensagemErro>{erro}</MensagemErro>
-      </div>
-
-      <div className="mt-3 space-y-2">
-        {lista === null && !erro && (
-          <div className="animate-pulse space-y-2">
-            <div className="h-16 rounded-2xl bg-black/[0.04]" />
-            <div className="h-16 rounded-2xl bg-black/[0.04]" />
-          </div>
-        )}
-
-        {filtrados?.length === 0 && (
-          <p className="rounded-2xl bg-[var(--bg-soft)] p-5 text-center text-sm text-[var(--cream-soft)]">
-            Nenhum aluno encontrado.
+      {/* Banner */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#E8F0FE] via-[#D9E6FB] to-[#C7DAF8] shadow-sm">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[url('/images/banner-12.png')] bg-cover bg-center opacity-25"
+        />
+        <div className="relative z-10 px-6 py-10 md:px-10 md:py-12 lg:py-14">
+          <span className="inline-flex rounded-full bg-white/60 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--mango)] backdrop-blur-sm md:text-xs">
+            Gestão de Alunos
+          </span>
+          <h1 className="mt-4 font-display text-2xl font-semibold leading-tight text-[var(--cream)] md:text-3xl lg:text-4xl">
+            Alunos
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm text-[var(--cream-soft)] md:text-base">
+            Visualize, pesquise e gerencie todos os alunos registados na plataforma.
           </p>
-        )}
+        </div>
+      </section>
 
-        {filtrados?.map((a) => {
-          const estaAberto = aberto === a.id;
-          return (
-            <div key={a.id} className="rounded-2xl bg-[var(--bg-soft)] p-4">
-              <div className="flex items-start justify-between gap-3">
+      {erro && (
+        <div className="mt-6">
+          <MensagemErro>{erro}</MensagemErro>
+        </div>
+      )}
+
+      {/* Barra de ferramentas */}
+      <section className="mt-6 flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="relative flex-1">
+          <svg
+            viewBox="0 0 24 24"
+            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--cream-soft)]"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+          </svg>
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Pesquisar por nome ou WhatsApp…"
+            className="campo pl-9"
+          />
+        </div>
+
+        <select
+          value={filtroClasse}
+          onChange={(e) => setFiltroClasse(e.target.value)}
+          className="campo md:max-w-[180px]"
+        >
+          <option value="todas">Todas as classes</option>
+          <option value="9">9.ª Classe</option>
+          <option value="12">12.ª Classe</option>
+        </select>
+
+        <select
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+          className="campo md:max-w-[180px]"
+        >
+          <option value="todos">Todos os estados</option>
+          <option value="activo">Activos</option>
+          <option value="pendente">Pendentes</option>
+        </select>
+
+        <Link
+          to="/registo"
+          state={{ origem: 'admin' }}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--mango)] px-4 py-2.5 text-sm font-semibold text-[var(--mango-ink)] transition hover:brightness-110"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+          </svg>
+          Novo aluno
+        </Link>
+      </section>
+
+      {/* Grelha principal */}
+      <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+        {/* Tabela */}
+        <div className="overflow-hidden rounded-2xl bg-[var(--paper)] shadow-sm">
+          {lista === null && !erro && (
+            <div className="animate-pulse space-y-3 p-5">
+              <div className="h-10 rounded-lg bg-black/[0.04]" />
+              <div className="h-10 rounded-lg bg-black/[0.04]" />
+              <div className="h-10 rounded-lg bg-black/[0.04]" />
+            </div>
+          )}
+
+          {filtrados.length === 0 && lista !== null && (
+            <p className="p-8 text-center text-sm text-[var(--cream-soft)]">
+              Nenhum aluno encontrado.
+            </p>
+          )}
+
+          {paginaActual.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--paper-soft)] text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Nome</th>
+                    <th className="px-3 py-3 text-left">WhatsApp</th>
+                    <th className="px-3 py-3 text-left">Unidades</th>
+                    <th className="px-3 py-3 text-left">Registo</th>
+                    <th className="px-3 py-3 text-left">Estado</th>
+                    <th className="w-16 px-3 py-3 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginaActual.map((a) => (
+                    <tr key={a.id} className="border-t border-black/5 transition hover:bg-black/[0.02]">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${corAvatar(a.id)}`}
+                          >
+                            {iniciais(a.nome)}
+                          </span>
+                          <span className="font-semibold text-[var(--ink)]">{a.nome}</span>
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-[var(--ink-soft)]">
+                        {a.whatsapp}
+                      </td>
+                      <td className="px-3 py-3 text-[var(--ink-soft)]">
+                        {a.historico?.length ?? 0}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-[var(--ink-soft)]">
+                        {formatarData(a.data_registo)}
+                      </td>
+                      <td className="px-3 py-3">
+                        <StatusBadge estado={a.estado || 'activo'} />
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setApagar({ id: a.id, nome: a.nome })}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[var(--brick)] transition hover:bg-[var(--brick-soft)]"
+                          aria-label={`Apagar ${a.nome}`}
+                        >
+                          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M6 6l1 14a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-14M10 11v6M14 11v6" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Paginação */}
+          {filtrados.length > 0 && (
+            <div className="flex flex-col items-center justify-between gap-3 border-t border-black/5 px-5 py-4 sm:flex-row">
+              <p className="text-xs text-[var(--cream-soft)]">
+                Mostrando {inicio + 1}–{Math.min(fim, filtrados.length)} de {filtrados.length} alunos
+              </p>
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setAberto(estaAberto ? null : a.id)}
-                  className="flex flex-1 items-center justify-between gap-3 text-left"
+                  type="button"
+                  onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                  disabled={pagina === 1}
+                  className="rounded-lg border border-black/10 px-2.5 py-1 text-sm font-semibold text-[var(--cream-soft)] transition hover:bg-black/[0.04] disabled:opacity-40"
                 >
-                  <div>
-                    <p className="font-display text-base font-semibold text-[var(--cream)]">{a.nome}</p>
-                    <p className="font-mono-ref text-xs text-[var(--cream-soft)]">{a.whatsapp}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-[var(--cream-soft)]">Desde {formatarData(a.data_registo)}</p>
-                    <p className="text-xs font-semibold text-[var(--mango)]">
-                      {estaAberto ? 'Fechar ▲' : `${a.historico?.length || 0} pedido(s) ▾`}
-                    </p>
-                  </div>
+                  ‹
                 </button>
+                {Array.from({ length: totalPaginas }).slice(0, 5).map((_, i) => {
+                  const num = i + 1;
+                  return (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setPagina(num)}
+                      className={`min-w-[32px] rounded-lg px-2.5 py-1 text-sm font-semibold transition ${
+                        pagina === num
+                          ? 'bg-[var(--mango)] text-[var(--mango-ink)]'
+                          : 'text-[var(--cream-soft)] hover:bg-black/[0.04]'
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  );
+                })}
+                {totalPaginas > 5 && <span className="px-1 text-[var(--cream-soft)]">…</span>}
                 <button
-                  onClick={() => setApagar({ id: a.id, nome: a.nome })}
-                  className="shrink-0 rounded-lg border border-black/10 px-2.5 py-1.5 text-xs font-semibold text-[var(--brick)] hover:bg-black/[0.04]"
+                  type="button"
+                  onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                  disabled={pagina === totalPaginas}
+                  className="rounded-lg border border-black/10 px-2.5 py-1 text-sm font-semibold text-[var(--cream-soft)] transition hover:bg-black/[0.04] disabled:opacity-40"
                 >
-                  Apagar
+                  ›
                 </button>
               </div>
-
-              {estaAberto && (
-                <div className="mt-3 space-y-2 border-t border-black/10 pt-3">
-                  {(!a.historico || a.historico.length === 0) && (
-                    <p className="text-sm text-[var(--cream-soft)]">Ainda não pediu nenhuma unidade.</p>
-                  )}
-                  {a.historico?.map((acesso) => (
-                    <div key={acesso.id} className="flex items-center justify-between gap-2 rounded-xl bg-black/[0.04] px-3 py-2">
-                      <div>
-                        <p className="text-sm font-medium text-[var(--cream)]">{acesso.unidade_nome}</p>
-                        <p className="font-mono-ref text-xs text-[var(--cream-soft)]">{acesso.codigo_referencia}</p>
-                      </div>
-                      <StatusBadge estado={acesso.estado_visivel || acesso.estado} />
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-          );
-        })}
-      </div>
+          )}
+        </div>
 
+        {/* Painel lateral */}
+        <aside className="space-y-4">
+          <div className="rounded-2xl bg-[var(--paper)] p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--mango-soft)] text-[var(--mango)]">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <circle cx="9" cy="8" r="3" />
+                  <path d="M3 20c.8-3 2.9-4.5 6-4.5S14.2 17 15 20" strokeLinecap="round" />
+                  <circle cx="17" cy="9" r="2.5" />
+                  <path d="M15 17.5c.5-1.5 1.7-2.3 3.2-2.3 1.4 0 2.5.6 3 1.8" strokeLinecap="round" />
+                </svg>
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">
+                  Total de alunos
+                </p>
+                <p className="mt-1 font-display text-2xl font-semibold text-[var(--ink)]">
+                  {totalAlunos}
+                </p>
+                <p className="text-xs text-[var(--cream-soft)]">Registados na plataforma</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-[var(--paper)] p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--teal-soft)] text-[var(--teal)]">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="m8.5 12 2.5 2.5L16 9" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">
+                  Ativos
+                </p>
+                <p className="mt-1 font-display text-2xl font-semibold text-[var(--ink)]">
+                  {ativos}
+                </p>
+                <p className="text-xs text-[var(--cream-soft)]">
+                  {totalAlunos > 0 ? Math.round((ativos / totalAlunos) * 100) : 0}% do total
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-[var(--paper)] p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--amber-soft)] text-[#7A4B0A]">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--cream-soft)]">
+                  Pendentes
+                </p>
+                <p className="mt-1 font-display text-2xl font-semibold text-[var(--ink)]">
+                  {pendentes}
+                </p>
+                <p className="text-xs text-[var(--cream-soft)]">
+                  {totalAlunos > 0 ? Math.round((pendentes / totalAlunos) * 100) : 0}% do total
+                </p>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      {/* Modal de confirmação */}
       {apagar && (
         <Modal
           titulo="Apagar aluno"
