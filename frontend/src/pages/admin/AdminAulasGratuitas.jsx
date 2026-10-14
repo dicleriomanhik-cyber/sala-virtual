@@ -76,7 +76,7 @@ export default function AdminAulasGratuitas() {
           <button
             type="button"
             onClick={() => setEditar({ titulo: '', classe: '', disciplina: 'Física', link_youtube: '', imagem_url: '', ordem: 0, ativo: true })}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--mango)] px-4 py-2.5 text-sm font-semibold text-[var(--mango-ink)] transition hover:brightness-110"
+            className="inline-flex w-fit items-center justify-center gap-2 rounded-xl bg-[var(--mango)] px-4 py-2.5 text-sm font-semibold text-[var(--mango-ink)] transition hover:brightness-110"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 5v14M5 12h14" strokeLinecap="round" />
@@ -123,11 +123,6 @@ export default function AdminAulasGratuitas() {
                   <tr key={a.id} className="border-t border-black/5 transition hover:bg-black/[0.02]">
                     <td className="px-4 py-3 font-semibold text-[var(--ink)]">
                       {a.titulo}
-                      {a.link_youtube && (
-                        <a href={a.link_youtube} target="_blank" rel="noreferrer" className="ml-2 text-xs font-medium text-[var(--mango)] hover:underline">
-                          ver link →
-                        </a>
-                      )}
                     </td>
                     <td className="px-3 py-3 text-[var(--ink-soft)]">{a.classe || '—'}</td>
                     <td className="px-3 py-3 text-[var(--ink-soft)]">{a.disciplina || '—'}</td>
@@ -264,7 +259,6 @@ function ModalAula({ aula, aoFechar, aoGuardar }) {
             Link do YouTube
           </span>
           <input
-            required
             type="url"
             value={link}
             onChange={(e) => setLink(e.target.value)}
@@ -278,10 +272,10 @@ function ModalAula({ aula, aoFechar, aoGuardar }) {
             URL da imagem/miniatura (opcional)
           </span>
           <input
-            type="url"
+            type="text"
             value={imagem}
             onChange={(e) => setImagem(e.target.value)}
-            placeholder="https://…/imagem.png"
+            placeholder="/images/aula-1.png ou https://…/imagem.png"
             className="campo"
           />
         </label>

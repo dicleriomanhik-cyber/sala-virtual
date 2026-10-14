@@ -34,12 +34,19 @@ export default function UnidadeTemas() {
   const carregar = useCallback(() => {
     api
       .get(`/unidades/${unidadeId}/temas`)
-      .then(setDados)
+      .then((d) => {
+        setDados(d);
+        if (d?.unidade?.classe_nome) {
+          setClasseNome(d.unidade.classe_nome);
+        }
+      })
       .catch(() => setErro('Não foi possível carregar esta unidade.'));
 
+    // Fallback: se a unidade não tiver classe_nome, procura nas classes
     api
       .get('/classes')
       .then(async (classes) => {
+        if (classeNome) return;
         for (const c of classes) {
           try {
             const unidades = await api.get(`/classes/${c.id}/unidades`);
@@ -65,7 +72,7 @@ export default function UnidadeTemas() {
     } else {
       setMeuAcesso(null);
     }
-  }, [unidadeId, aluno]);
+  }, [unidadeId, aluno, classeNome]);
 
   useEffect(() => {
     carregar();
