@@ -142,7 +142,7 @@ export default function AdminLayout({ children }) {
               </button>
 
               {dropdownAberto && (
-                <div className="absolute right-0 top-full z-30 mt-2 w-80 overflow-hidden rounded-2xl bg-[var(--paper)] shadow-lg">
+                <div className="fixed inset-x-4 top-16 z-30 overflow-hidden rounded-2xl bg-[var(--paper)] shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80">
                   <div className="border-b border-black/5 px-4 py-3">
                     <p className="text-sm font-semibold text-[var(--ink)]">Notificações</p>
                   </div>
